@@ -46,8 +46,5 @@ class DataJoin:
         # breakpoint()
         return create_sample_legacy(x, target, torch.tensor([idx]))
 
-    def create_metric_sample(self, output, batch, train_epoch_state):
-        return self.dss[0].create_metric_sample(output, batch, train_epoch_state)
-
     def __len__(self):
         return len(self.index)

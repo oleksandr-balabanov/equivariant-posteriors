@@ -6,8 +6,8 @@ from lib.train_dataclasses import TrainEval
 
 
 def create_regression_metric_list(loss):
-    def non_reducing_loss(preds, target):
-        return loss(preds, target, reduction="none")
+    def non_reducing_loss(output, batch):
+        return loss(output["predictions"], batch["target"], reduction="none")
 
     return [
         # lambda: Metric(

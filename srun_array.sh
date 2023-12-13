@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -x
 GPU=${GPU:-A40:1}
 TIMESTAMP=$(date -d "today" +"%Y%m%d%H%M")

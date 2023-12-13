@@ -7,6 +7,7 @@ from typing import Dict
 
 from filelock import FileLock
 from lib.metric import MetricSample, Metric
+from lib.timing_metric import Timing
 import lib.data_factory as data_factory
 from lib.data_utils import get_sampler
 import lib.model_factory as model_factory
@@ -48,10 +49,9 @@ def evaluate_metrics_on_data(
             output = model(batch)
 
             metric_sample = MetricSample(
-                output=output["logits"],
-                prediction=output["predictions"],
-                target=target,
-                sample_id=sample_id,
+                output=output,
+                batch=batch,
+                # prediction=output["predictions"],
                 epoch=-1,
             )
             for metric_name, metric in metrics.items():
@@ -63,6 +63,8 @@ def validate(
     train_epoch_spec: TrainEpochSpec,
     train_run: TrainRun,
 ):
+    if train_epoch_state.val_dataloader is None:
+        return
     if train_epoch_state.epoch % train_run.validate_nth_epoch != 0:
         # Evaluate if this is the last epoch regardless
         if train_epoch_state.epoch != train_run.epochs:
@@ -77,8 +79,11 @@ def validate(
         for i, batch in enumerate(dataloader):
             batch = {k: v.to(device) for k, v in batch.items()}
             output = model(batch)
-            metric_sample = dataloader.dataset.create_metric_sample(
-                output=output, batch=batch, train_epoch_state=train_epoch_state
+            # metric_sample = dataloader.dataset.create_metric_sample(
+            #     output=output, batch=batch, train_epoch_state=train_epoch_state
+            # )
+            metric_sample = MetricSample(
+                output=output, batch=batch, epoch=train_epoch_state.epoch
             )
             for metric in train_epoch_state.validation_metrics:
                 metric(metric_sample)
@@ -107,9 +112,14 @@ def train(
     # train_epoch_state.batch = 0
     for i, batch in enumerate(dataloader):
         train_epoch_state.batch += 1
+        train_epoch_state.timing_metric.start("to_device")
         batch = {k: v.to(device) for k, v in batch.items()}
+        train_epoch_state.timing_metric.stop("to_device")
+        train_epoch_state.timing_metric.start("model_forward")
         output = model(batch)
+        train_epoch_state.timing_metric.stop("model_forward")
 
+        train_epoch_state.timing_metric.start("loss_opt_step")
         loss_val = loss(output, batch)
         optimizer.zero_grad()
         loss_val.backward()
@@ -118,17 +128,20 @@ def train(
                 model.parameters(), train_run.train_config.gradient_clipping
             )
         optimizer.step()
+        train_epoch_state.timing_metric.stop("loss_opt_step")
 
         if i == 0 and torch.cuda.is_available():
             train_epoch_state.device_memory_stats = (
                 torch.cuda.memory_stats_as_nested_dict()
             )
 
-        metric_sample = dataloader.dataset.create_metric_sample(
-            output=output, batch=batch, train_epoch_state=train_epoch_state
+        train_epoch_state.timing_metric.start("train_metrics")
+        metric_sample = MetricSample(
+            output=output, batch=batch, epoch=train_epoch_state.epoch
         )
         for metric in train_epoch_state.train_metrics:
             metric(metric_sample)
+        train_epoch_state.timing_metric.stop("train_metrics")
 
         try:
             now = time.time()
@@ -138,17 +151,21 @@ def train(
                         train_run=train_run, train_epoch_state=train_epoch_state
                     )
                 )
+                train_epoch_state.timing_metric.start("psql")
                 last_postgres_result = render_psql(train_run, train_epoch_state)
+                train_epoch_state.timing_metric.stop("psql")
                 train_epoch_state.next_visualization = now + 5
                 train_epoch_state.next_visualizer = (
                     train_epoch_state.next_visualizer + 1
                 ) % 2
+                train_epoch_state.timing_metric.start("visualize")
                 visualizers[train_epoch_state.next_visualizer](
                     train_epoch_state,
                     train_run,
                     last_postgres_result,
                     train_epoch_spec.device_id,
                 )
+                train_epoch_state.timing_metric.stop("visualize")
         except Exception as e:
             logging.error("Visualization failed")
             logging.error(str(e))
@@ -176,13 +193,9 @@ def create_initial_state(train_run: TrainRun, device_id):
     train_config = train_run.train_config
 
     train_ds = data_factory.get_factory().create(train_config.train_data_config)
-    val_ds = data_factory.get_factory().create(train_config.val_data_config)
 
     train_sampler, train_shuffle = get_sampler(
         train_run.compute_config, train_ds, shuffle=True
-    )
-    val_sampler, val_shuffle = get_sampler(
-        train_run.compute_config, val_ds, shuffle=False
     )
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -194,16 +207,23 @@ def create_initial_state(train_run: TrainRun, device_id):
         num_workers=train_run.compute_config.num_workers,
         collate_fn=train_ds.collate_fn if hasattr(train_ds, "collate_fn") else None,
     )
-    assert val_shuffle is False
-    val_dataloader = torch.utils.data.DataLoader(
-        val_ds,
-        batch_size=train_config.batch_size,
-        shuffle=val_shuffle,
-        drop_last=False,
-        sampler=val_sampler,
-        num_workers=train_run.compute_config.num_workers,
-        collate_fn=val_ds.collate_fn if hasattr(val_ds, "collate_fn") else None,
-    )
+    if train_config.val_data_config is not None:
+        val_ds = data_factory.get_factory().create(train_config.val_data_config)
+        val_sampler, val_shuffle = get_sampler(
+            train_run.compute_config, val_ds, shuffle=False
+        )
+        assert val_shuffle is False
+        val_dataloader = torch.utils.data.DataLoader(
+            val_ds,
+            batch_size=train_config.batch_size,
+            shuffle=val_shuffle,
+            drop_last=False,
+            sampler=val_sampler,
+            num_workers=train_run.compute_config.num_workers,
+            collate_fn=val_ds.collate_fn if hasattr(val_ds, "collate_fn") else None,
+        )
+    else:
+        val_dataloader = None
 
     torch.manual_seed(train_config.ensemble_id)
     init_model = model_factory.get_factory().create(
@@ -242,6 +262,7 @@ def create_initial_state(train_run: TrainRun, device_id):
         val_dataloader=val_dataloader,
         next_visualization=0.0,
         next_visualizer=0,
+        timing_metric=Timing(),
     )
 
 
@@ -304,7 +325,7 @@ def do_training(train_run: TrainRun, state: TrainEpochState, device_id):
         df = render_dataframe(train_run, state)
 
         print("Render psql...")
-        render_psql(train_run, state)
+        render_psql(train_run, state, block=True)
 
         print("Pickling dataframe...")
         df_path = get_checkpoint_path(train_run.train_config) / "df.pickle"

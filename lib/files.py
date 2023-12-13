@@ -4,9 +4,10 @@ import shutil
 import lib.git as git
 import lib.stable_hash as stable_hash
 from lib.compute_env import env
+from lib.serialize_human import serialize_human
 
 
-def create_result_path(base_path: Path, name: str, config: object):
+def create_result_path(name: str, config: object):
     base_path = env().paths.artifacts
     git_short_rev = git.get_rev_short()
     config_hash = stable_hash.stable_hash_small(config)
@@ -20,7 +21,7 @@ def create_result_path(base_path: Path, name: str, config: object):
 
 def write_config_human(config, path):
     with open(path, "w") as f:
-        f.write(json.dumps(config.serialize_human(), indent=2))
+        f.write(json.dumps(serialize_human(config), indent=2))
 
 
 def copy_working_tree_to_destination(dest_path):
@@ -43,8 +44,8 @@ def copy_working_tree_to_destination(dest_path):
                 shutil.copy2(source_file, dest_file_path)
 
 
-def prepare_results(base_path: Path, name: str, config: object) -> Path:
-    result_path = create_result_path(base_path, name, config)
+def prepare_results(name: str, config: object) -> Path:
+    result_path = create_result_path(name, config)
     copy_working_tree_to_destination(result_path / "code")
     write_config_human(config, result_path / "config.json")
     return result_path

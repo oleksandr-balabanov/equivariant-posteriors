@@ -17,7 +17,6 @@ import numpy as np
 
 from lib.dataspec import DataSpec
 from lib.data_utils import create_sample_legacy
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 
 # Adapted from https://github.com/ENSTA-U2IS/torch-uncertainty/
@@ -268,14 +267,6 @@ class DataCIFAR10C(VisionDataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
         return create_sample_legacy(sample, target, sample_id)
-
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return create_metric_sample_legacy(output, batch, train_epoch_state)
 
     @staticmethod
     def sample_id_spec(config):

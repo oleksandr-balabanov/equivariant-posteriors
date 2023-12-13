@@ -98,8 +98,8 @@ class WindowAttention(nn.Module):
         if self.rel_pos_bias == "earth":
             # B * n_windows, window_size, C
             n_windows = (
-                torch.tensor(input_resolution).numel()
-                // torch.tensor(window_size).numel()
+                torch.tensor(input_resolution).prod()
+                // torch.tensor(window_size).prod()
             )
             # indices = torch.arange(end=window_size)
             # coords = indices[:, None] - indices[None, :]
@@ -115,43 +115,6 @@ class WindowAttention(nn.Module):
                 )
             )
             trunc_normal_(self.earth_position_bias, std=0.02)
-
-        if self.rel_pos_bias == "flat":
-            # define a parameter table of relative position bias
-            self.relative_position_bias_table = nn.Parameter(
-                torch.zeros(
-                    (
-                        int(
-                            (2 * window_size**0.5 - 1) * (2 * window_size**0.5 - 1)
-                        ),
-                        num_heads,
-                    )
-                )
-            )  # 2*sqrt(Ws)-1 * 2*sqrt(Ws)-1, nH
-
-            # get pair-wise relative position index for each token inside the window
-            coords = torch.arange(window_size**0.5)
-            coords = torch.stack(
-                torch.meshgrid([coords, coords])
-            )  # 2, sqrt(Ws), sqrt(Ws)
-            coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
-            relative_coords = (
-                coords_flatten[:, :, None] - coords_flatten[:, None, :]
-            )  # 2, Ws, Ws
-            relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Ws, Ws, 2
-            relative_coords[:, :, 0] += window_size**0.5 - 1  # shift to start from 0
-            relative_coords[:, :, 1] += window_size**0.5 - 1
-            relative_coords[:, :, 0] *= 2 * window_size**0.5 - 1
-            relative_position_index = relative_coords.sum(-1).long()  # Ws, Ws
-
-            # translate from nested index scheme into Cartesian coordinates
-            nest_idcs = get_nest_win_idcs(window_size)  # sqrt(Ws), sqrt(Ws)
-            nest_idcs_inv = nest_idcs.flatten().argsort()
-            relative_position_index = relative_position_index[nest_idcs_inv]  # Ws, Ws
-            relative_position_index = relative_position_index[
-                :, nest_idcs_inv
-            ]  # Ws, Ws
-            self.register_buffer("relative_position_index", relative_position_index)
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -192,14 +155,6 @@ class WindowAttention(nn.Module):
 
         if self.rel_pos_bias == "earth":
             attn = attn + self.earth_position_bias
-        if self.rel_pos_bias == "flat":
-            relative_position_bias = self.relative_position_bias_table[
-                self.relative_position_index
-            ]  # Ws,Ws,nH
-            relative_position_bias = relative_position_bias.permute(
-                2, 0, 1
-            ).contiguous()  # nH, Wh*Ww, Wh*Ww
-            attn = attn + relative_position_bias.unsqueeze(0)
 
         if mask is not None:
             nW = mask.shape[0]
@@ -350,6 +305,7 @@ class SwinTransformerBlock(nn.Module):
 
         # cyclic shift
         shifted_x = self.shifter.shift(x)
+        # shifted_x = x
 
         # partition windows
         x_windows = window_partition(
@@ -363,6 +319,7 @@ class SwinTransformerBlock(nn.Module):
 
         # reverse cyclic shift
         x = self.shifter.shift_back(shifted_x)
+        # x = shifted_x
 
         # FFN
         if self.use_v2_norm_placement:
@@ -457,22 +414,23 @@ class FinalPatchExpand_Transpose(nn.Module):
         self.conv_surface = nn.ConvTranspose1d(
             dim,
             data_spec_hp.n_surface,
-            kernel_size=patch_size * 4,
+            kernel_size=patch_size,
             stride=patch_size,
-            padding=patch_size + 2,
+            # padding=patch_size + 2,
         )
         self.conv_upper = nn.ConvTranspose2d(
             dim,
             data_spec_hp.n_upper,
-            kernel_size=[2, patch_size * 4],
+            kernel_size=[2, patch_size],
             stride=[2, patch_size],
-            padding=[0, patch_size + 2],
+            # padding=[0, patch_size + 2],
         )
         # self.norm = nn.LayerNorm(dim)
 
     def forward(self, x: torch.Tensor):
         # B D N C -> B C D N
         x = x.permute(0, 3, 1, 2)
+        # breakpoint()
         x_surface = self.conv_surface(x[:, :, 0, :])
         x_upper = self.conv_upper(x[:, :, 1:, :])
         x_surface = x_surface.permute(0, 2, 1)
@@ -608,7 +566,7 @@ class PatchEmbed(nn.Module):
 
     def __init__(self, config, data_spec: DataSpecHP):
         super().__init__()
-        assert config.patch_size % 4 == 0, "required for valid nside in deeper layers"
+        # assert config.patch_size % 4 == 0, "required for valid nside in deeper layers"
 
         self.config = config
         self.data_spec = data_spec
@@ -715,10 +673,10 @@ class SwinHPPangu(nn.Module):
         self.patch_embed = PatchEmbed(config, data_spec=data_spec)
         num_hp_patches = self.patch_embed.num_hp_patches
         self.input_resolutions = [
-            [4, num_hp_patches],
-            [4, num_hp_patches // 4],
-            [4, num_hp_patches // 4],
-            [4, num_hp_patches],
+            [8, num_hp_patches],
+            [8, num_hp_patches // 4],
+            [8, num_hp_patches // 4],
+            [8, num_hp_patches],
         ]
 
         # absolute position embedding
@@ -843,7 +801,8 @@ class SwinHPPangu(nn.Module):
         x = self.upsample(x)
         x = self.layers[3](x)
         x = torch.concatenate([skip, x], -1)
-        # x = torch.concatenate([skip2, skip2], -1)
+        # breakpoint()
+        # x = torch.concatenate([x, x], -1)
         x_surface, x_upper = self.final_up(x)
         x_surface = x_surface.permute(0, 2, 1)
         x_upper = x_upper.permute(0, 3, 1, 2)

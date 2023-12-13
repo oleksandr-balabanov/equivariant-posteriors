@@ -5,7 +5,6 @@ import torchvision
 from dataclasses import dataclass
 from lib.dataspec import DataSpec
 from lib.data_utils import create_sample_legacy
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 
 
@@ -50,14 +49,6 @@ class DataMNIST2(torch.utils.data.Dataset):
         # image = image.reshape(2 * 2, 14 * 14)
         image = image.reshape(-1, 14 * 14)
         return create_sample_legacy(image, mnist_sample[1] % 2, idx)
-
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return create_metric_sample_legacy(output, batch, train_epoch_state)
 
     def __len__(self):
         return len(self.MNIST)

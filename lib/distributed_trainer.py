@@ -1,7 +1,9 @@
 import filelock
 import time
+from typing import List
 
 from lib.ddp import ddp_setup
+from lib.train_dataclasses import TrainRun
 from lib.train import load_or_create_state
 from lib.train import do_training
 from lib.stable_hash import stable_hash_small
@@ -14,12 +16,12 @@ def do_train_run(train_run, device_id):
     do_training(train_run, state, device_id)
 
 
-def main():
+def distributed_train(requested_configs: List[TrainRun] = None):
     device_id = ddp_setup()
     last_aquired_training = time.time()
     while True:
         print("Trying to fetch train run...")
-        distributed_train_run = fetch_requested_train_run()
+        distributed_train_run = fetch_requested_train_run(requested_configs)
         if distributed_train_run is not None:
             try:
                 last_aquired_training = time.time()
@@ -38,4 +40,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    distributed_train()

@@ -3,7 +3,6 @@ import torch
 from dataclasses import dataclass
 from lib.dataspec import DataSpec
 from lib.data_utils import create_sample_legacy
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 
 
@@ -43,14 +42,6 @@ class DataSine(torch.utils.data.Dataset):
         target = self.y[idx]
         sample_id = self.sample_ids[idx]
         return create_sample_legacy(input, target, sample_id)
-
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return create_metric_sample_legacy(output, batch, train_epoch_state)
 
     def __len__(self):
         return self.x.shape[0]

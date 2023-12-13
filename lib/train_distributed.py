@@ -3,6 +3,7 @@ import dill
 from filelock import FileLock, Timeout
 import os
 from pathlib import Path
+from typing import List
 
 from lib.train_dataclasses import TrainRun
 from lib.serialization import is_serialized
@@ -96,7 +97,12 @@ def fetch_requested_hash(hash):
     return None
 
 
-def fetch_requested_train_run():
+def fetch_requested_train_run(train_only_from_configs: List[TrainRun] = None):
+    if train_only_from_configs is None:
+        train_only_from_configs = []
+
+    hashes_to_train = [stable_hash(config) for config in train_only_from_configs]
+
     pool = DISTRIBUTED_TRAINING_REQUEST_PATH.glob("*.dill")
     pool_with_ctime = []
     for pool_file in pool:
@@ -108,6 +114,8 @@ def fetch_requested_train_run():
     sorted_pool = [x[1] for x in sorted(pool_with_ctime)]
     for request_file in sorted_pool:
         hash = request_file.stem
+        if len(hashes_to_train) > 0 and hash not in hashes_to_train:
+            continue
         lock = FileLock(get_lock_from_hash(hash))
         try:
             lock.acquire(timeout=1)

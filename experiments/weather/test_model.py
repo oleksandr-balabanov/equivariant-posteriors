@@ -2,15 +2,16 @@
 import torch
 import numpy as np
 from pathlib import Path
-import tqdm
-import onnxruntime as ort
+
+# import onnxruntime as ort
 
 from lib.train_dataclasses import TrainConfig
 from lib.train_dataclasses import TrainRun
+from lib.train_dataclasses import TrainEval
 from lib.train_dataclasses import OptimizerConfig
 from lib.train_dataclasses import ComputeConfig
+from lib.metric import create_metric
 
-from lib.regression_metrics import create_regression_metrics
 
 # from lib.models.healpix.swin_hp_transformer import SwinHPTransformerConfig
 from experiments.weather.models.swin_hp_pangu import SwinHPPanguConfig
@@ -32,19 +33,24 @@ from experiments.weather.data import DataHP
 from experiments.weather.data import DataHPConfig
 
 NSIDE = 64
-EPOCHS = 20
+EPOCHS = 10
 
 
 def create_config(ensemble_id):
     loss = torch.nn.L1Loss()
 
-    def reg_loss(outputs, batch):
+    def reg_loss(output, batch):
         # breakpoint()
-        return loss(outputs["logits_upper"], batch["target_upper"]) + 0.25 * loss(
-            outputs["logits_surface"], batch["target_surface"]
+        # breakpoint()
+        # return loss(output["logits_upper"], batch["target_upper"])  # + 0.25 * loss(
+
+        return loss(output["logits_upper"], batch["target_upper"]) + 0.25 * loss(
+            output["logits_surface"], batch["target_surface"]
         )
+        # return loss(output["logits_surface"], batch["target_surface"])
 
     train_config = TrainConfig(
+        extra=dict(loss_variant="full"),
         model_config=SwinHPPanguConfig(
             base_pix=12,
             nside=NSIDE,
@@ -66,46 +72,30 @@ def create_config(ensemble_id):
             shift_size=8,  # int(16 * (NSIDE / 256)),
             shift_strategy="nest_roll",
             ape=False,
-            patch_size=int(16 * (NSIDE / 256)),
+            patch_size=4,  # int(16 * (NSIDE / 256)),
         ),
-        # model_config=SwinHPTransformerConfig(
-        #     base_pix=12,
-        #     nside=NSIDE,
-        #     dev_mode=False,
-        #     depths=[4, 8, 12],
-        #     num_heads=[3, 6, 12],
-        #     embed_dim=48,
-        #     window_size=64,
-        #     use_cos_attn=True,
-        #     use_v2_norm_placement=True,
-        #     drop_rate=0.1,
-        #     attn_drop_rate=0.1,
-        #     rel_pos_bias="flat",
-        #     shift_size=32,
-        #     shift_strategy="nest_roll",
-        #     ape=True,
-        #     patch_size=16,
-        # ),
-        # model_config=MLPConfig(widths=[256, 256]),
         train_data_config=DataHPConfig(nside=NSIDE),
-        val_data_config=DataHPConfig(nside=NSIDE),
+        val_data_config=None,  # DataHPConfig(nside=NSIDE),
         loss=reg_loss,
         optimizer=OptimizerConfig(
             optimizer=torch.optim.AdamW,
             kwargs=dict(weight_decay=3e-6, lr=5e-4),
+            # kwargs=dict(weight_decay=3e-6, lr=5e-3),
         ),
         batch_size=1,
         ensemble_id=ensemble_id,
-        _version=25,
+        _version=50,
     )
-    train_eval = create_regression_metrics(torch.nn.functional.l1_loss, None)
+    train_eval = TrainEval(
+        train_metrics=[create_metric(reg_loss)], validation_metrics=[]
+    )  # create_regression_metrics(torch.nn.functional.l1_loss, None)
     train_run = TrainRun(
-        compute_config=ComputeConfig(distributed=False, num_workers=0),
+        compute_config=ComputeConfig(distributed=False, num_workers=3),
         train_config=train_config,
         train_eval=train_eval,
-        epochs=EPOCHS,
+        epochs=300,
         save_nth_epoch=1,
-        validate_nth_epoch=5,
+        validate_nth_epoch=20,
     )
     return train_run
 
@@ -131,7 +121,7 @@ if __name__ == "__main__":
 
     result_path = prepare_results(
         Path(__file__).parent,
-        f"{Path(__file__).stem}_{ensemble_config.members[0].train_config.model_config.__class__.__name__}_nside_{NSIDE}_epochs_{EPOCHS}",
+        f"{Path(__file__).stem}_{ensemble_config.members[0].train_config.model_config.__class__.__name__}_nside_{NSIDE}",
         ensemble_config,
     )
     symlink_checkpoint_files(ensemble, result_path)
@@ -160,48 +150,52 @@ if __name__ == "__main__":
         )
         add_artifact(ensemble_config.members[0], name, path)
 
-    for batch in tqdm.tqdm(dl):
-        batch = {k: v.to(device_id) for k, v in batch.items()}
+    # for batch in tqdm.tqdm(dl):
+    #     batch = {k: v.to(device_id) for k, v in batch.items()}
 
-        output = ensemble.members[0](batch)
-        save_and_register("of_surface", output["logits_surface"])
-        save_and_register("if_surface", batch["input_surface"])
-        save_and_register("tf_surface", batch["target_surface"])
-        save_and_register("of_upper", output["logits_upper"])
-        save_and_register("if_upper", batch["input_upper"])
-        save_and_register("tf_upper", batch["target_upper"])
-        # save_and_register("of_surface.npy", output["logits_surface"])
-        # np.save(
-        #     result_path / "if_surface.npy",
-        #     batch["input_surface"].detach().cpu().numpy(),
-        # )
-        # np.save(
-        #     result_path / "tf_surface.npy",
-        #     batch["target_surface"].detach().cpu().numpy(),
-        # )
+    #     start = time.time()
+    #     output = ensemble.members[0](batch)
+    #     model_time = time.time()
+    #     print(f"Model time: {model_time - start}, Sample {batch['sample_id']}")
+    # save_and_register("of_surface", output["logits_surface"])
+    # save_and_register("if_surface", batch["input_surface"])
+    # save_and_register("tf_surface", batch["target_surface"])
+    # save_and_register("of_upper", output["logits_upper"])
+    # save_and_register("if_upper", batch["input_upper"])
+    # save_and_register("tf_upper", batch["target_upper"])
 
-        # dh, dh_target = ds.get_driscoll_healy(ids[0])
-        # te5s = ds.get_template_e5s()
-        # pangu_output_upper, pangu_output_surface = ort_session_3.run(
-        #     None,
-        #     dict(
-        #         input=dh.upper.to_array().to_numpy(),
-        #         input_surface=dh.surface.to_array().to_numpy(),
-        #     ),
-        # )
-        # pangu_surface_xds = numpy_to_xds(pangu_output_surface, te5s.surface)
-        # pangu_upper_xds = numpy_to_xds(pangu_output_upper, te5s.upper)
-        # pangu_np_surface, pangu_np_upper = ds.e5_to_numpy(
-        #     cdstest.ERA5Sample(surface=pangu_surface_xds, upper=pangu_upper_xds)
-        # )
-        # np.save(result_path / "pangu_pred_surface.npy", pangu_np_surface)
-        # np.save(result_path / "pangu_pred_upper.npy", pangu_np_upper)
-        # np.save(
-        #     result_path / "pangu_pred_surface.npy",
-        #     batch["input_surface"].detach().cpu().numpy()[0],
-        # )
-        # np.save(
-        #     result_path / "pangu_pred_upper.npy",
-        #     batch["input_upper"].detach().cpu().numpy()[0],
-        # )
-        break
+    # save_and_register("of_surface.npy", output["logits_surface"])
+    # np.save(
+    #     result_path / "if_surface.npy",
+    #     batch["input_surface"].detach().cpu().numpy(),
+    # )
+    # np.save(
+    #     result_path / "tf_surface.npy",
+    #     batch["target_surface"].detach().cpu().numpy(),
+    # )
+
+    # dh, dh_target = ds.get_driscoll_healy(ids[0])
+    # te5s = ds.get_template_e5s()
+    # pangu_output_upper, pangu_output_surface = ort_session_3.run(
+    #     None,
+    #     dict(
+    #         input=dh.upper.to_array().to_numpy(),
+    #         input_surface=dh.surface.to_array().to_numpy(),
+    #     ),
+    # )
+    # pangu_surface_xds = numpy_to_xds(pangu_output_surface, te5s.surface)
+    # pangu_upper_xds = numpy_to_xds(pangu_output_upper, te5s.upper)
+    # pangu_np_surface, pangu_np_upper = ds.e5_to_numpy(
+    #     cdstest.ERA5Sample(surface=pangu_surface_xds, upper=pangu_upper_xds)
+    # )
+    # np.save(result_path / "pangu_pred_surface.npy", pangu_np_surface)
+    # np.save(result_path / "pangu_pred_upper.npy", pangu_np_upper)
+    # np.save(
+    #     result_path / "pangu_pred_surface.npy",
+    #     batch["input_surface"].detach().cpu().numpy()[0],
+    # )
+    # np.save(
+    #     result_path / "pangu_pred_upper.npy",
+    #     batch["input_upper"].detach().cpu().numpy()[0],
+    # )
+    # break

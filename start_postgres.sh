@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -x
 set -e
 PG_PATH=$(pwd)/pg_database

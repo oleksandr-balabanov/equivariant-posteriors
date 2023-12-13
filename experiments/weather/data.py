@@ -1,20 +1,24 @@
+import time
+import json
 from typing import Dict
 import torch
 import numpy as np
+from datetime import datetime, timedelta
+import shutil
 
 
 # from lib.models.healpix.swin_hp_transformer import SwinHPTransformerConfig
 
 # from lib.models.mlp import MLPConfig
 from lib.serialization import serialize_human
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 from lib.metric import MetricSample
+from lib.compute_env import env
 
 from dataclasses import dataclass
 import healpix
 import xarray as xr
-import experiments.weather.cdstest as cdstest
+import experiments.weather.cdsmontly as cdstest
 
 
 def numpy_to_xds(np_array, xds_template):
@@ -42,6 +46,25 @@ class DataSpecHP:
     n_upper: int
 
 
+def days_between_years(start_year: int, end_year: int) -> int:
+    start_date = datetime(start_year, 1, 1)
+    end_date = datetime(end_year, 12, 31)
+    return (end_date - start_date).days
+
+
+def day_index_to_era5_config(
+    day_index: int, start_year: int, end_year: int
+) -> cdstest.ERA5SampleConfig:
+    start_date = datetime(start_year, 1, 1)
+    target_date = start_date + timedelta(days=day_index)
+    return cdstest.ERA5SampleConfig(
+        year=target_date.strftime("%Y"),
+        month=target_date.strftime("%m"),
+        day=target_date.strftime("%d"),
+        time="00:00:00",
+    )
+
+
 class DataHP(torch.utils.data.Dataset):
     def __init__(self, data_config: DataHPConfig):
         self.config = data_config
@@ -66,7 +89,7 @@ class DataHP(torch.utils.data.Dataset):
         xlong = xr.DataArray(hlong, dims="z")
         xlat = xr.DataArray(hlat, dims="z")
 
-        def interpolate(variable):
+        def interpolate(variable: xr.DataArray):
             xhp = variable.interp(
                 latitude=xlat, longitude=xlong, kwargs={"fill_value": None}
             )
@@ -102,48 +125,52 @@ class DataHP(torch.utils.data.Dataset):
         return e5s
 
     def __getitem__(self, idx):
-        e5sc = cdstest.ERA5SampleConfig(
-            year="1999", month="01", day="01", time="00:00:00"
+        fs_cache_path = env().paths.datasets / "era5_lite_np_cache" / f"{idx}"
+        fs_cache_path_tmp = (
+            env().paths.datasets / "era5_lite_np_cache" / f"{idx}_constructing"
         )
-        e5s = cdstest.get_era5_sample(e5sc)
-        e5_target_config = cdstest.ERA5SampleConfig(
-            year="1999", month="01", day="01", time="03:00:00"
+        names = dict(
+            input_surface="surface.npy",
+            input_upper="upper.npy",
+            target_surface="target_surface.npy",
+            target_upper="target_upper.npy",
         )
-        e5target = cdstest.get_era5_sample(e5_target_config)
-        hp_surface, hp_upper = self.e5_to_numpy(e5s)
-        hp_target_surface, hp_target_upper = self.e5_to_numpy(e5target)
-
-        return dict(
-            input_surface=hp_surface,
-            input_upper=hp_upper,
-            target_surface=hp_target_surface,
-            target_upper=hp_target_upper,
+        item_dict = dict(
             sample_id=idx,
         )
-        # return create_sample_legacy(hp_surface[0:4], hp_target_surface[0:4], 0)
+        if fs_cache_path.is_dir():
+            for key, filename in names.items():
+                item_dict[key] = np.load(fs_cache_path / filename)
+        else:
+            e5s_input_config = day_index_to_era5_config(idx, 2007, 2017)
+            e5s_target_config = cdstest.add_timedelta(e5s_input_config, days=1)
+            e5s = cdstest.get_era5_sample(e5s_input_config)
+            e5target = cdstest.get_era5_sample(e5s_target_config)
+            hp_surface, hp_upper = self.e5_to_numpy(e5s)
+            hp_target_surface, hp_target_upper = self.e5_to_numpy(e5target)
+            data_dict = dict(
+                input_surface=hp_surface,
+                input_upper=hp_upper,
+                target_surface=hp_target_surface,
+                target_upper=hp_target_upper,
+            )
+            fs_cache_path_tmp.mkdir(parents=True, exist_ok=True)
+            for key, filename in names.items():
+                np.save(fs_cache_path_tmp / filename, data_dict[key])
 
-    # def create_metric_sample(
-    #     self,
-    #     output: Dict[str, torch.Tensor],
-    #     batch: Dict[str, torch.Tensor],
-    #     train_epoch_state: TrainEpochState,
-    # ):
-    #     return create_metric_sample_legacy(output, batch, train_epoch_state)
+            open(fs_cache_path_tmp / "era5config_input.json", "w").write(
+                json.dumps(e5s_input_config.__dict__, indent=2)
+            )
+            open(fs_cache_path_tmp / "era5config_target.json", "w").write(
+                json.dumps(e5s_target_config.__dict__, indent=2)
+            )
 
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return MetricSample(
-            output=output["logits_surface"].detach(),
-            prediction=None,
-            target=batch["target_surface"].detach(),
-            sample_id=batch["sample_id"].detach(),
-            epoch=train_epoch_state.epoch,
-            batch=train_epoch_state.batch,
-        )
+            if not fs_cache_path.is_dir():
+                shutil.move(fs_cache_path_tmp, fs_cache_path)
+
+            item_dict.update(data_dict)
+
+        return item_dict
 
     def __len__(self):
-        return 50
+        return days_between_years(2007, 2017)

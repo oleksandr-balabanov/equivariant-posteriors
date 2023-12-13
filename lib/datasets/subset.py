@@ -45,8 +45,5 @@ class DataSubset:
         x, y, sample_id = self.ds[self.subset[idx]]
         return create_sample_legacy(x, y, torch.tensor([idx]))
 
-    def create_metric_sample(self, output, batch, train_epoch_state):
-        return self.ds.create_metric_sample(output, batch, train_epoch_state)
-
     def __len__(self):
         return len(self.subset)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import torch
-from pathlib import Path
 
 from lib.train_dataclasses import TrainConfig
 from lib.train_dataclasses import TrainRun
@@ -11,6 +10,7 @@ from lib.data_registry import DataMNISTConfig
 from lib.datasets.mnist_visualization import visualize_mnist
 from lib.models.transformer import TransformerConfig
 from lib.generic_ablation import generic_ablation
+from lib.distributed_trainer import distributed_train
 
 
 def create_config(mlp_dim, ensemble_id):
@@ -51,8 +51,8 @@ def create_config(mlp_dim, ensemble_id):
 
 
 if __name__ == "__main__":
-    generic_ablation(
-        Path(__file__).parent / "results",
+    configs = generic_ablation(
         create_config,
         dict(mlp_dim=[100, 10, 50, 200], ensemble_id=list(range(5))),
     )
+    distributed_train(configs)

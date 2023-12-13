@@ -12,6 +12,7 @@ from lib.data_registry import DataSpiralsConfig
 from lib.datasets.spiral_visualization import visualize_spiral
 from lib.generic_ablation import generic_ablation
 from lib.classification_metrics import create_classification_metrics
+from lib.distributed_trainer import distributed_train
 
 
 def loss(preds, target):
@@ -63,8 +64,8 @@ def create_config(mlp_dim, ensemble_id):
 
 
 if __name__ == "__main__":
-    generic_ablation(
-        Path(__file__).parent / "results",
+    configs = generic_ablation(
         create_config,
         dict(mlp_dim=[1, 5, 10, 20, 50], ensemble_id=list(range(5))),
     )
+    distributed_train(configs)

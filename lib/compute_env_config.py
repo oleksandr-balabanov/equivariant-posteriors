@@ -13,6 +13,7 @@ class Paths:
     locks: Path = field(default=Path("./locks"))
     distributed_requests: Path = field(default=Path("./distributed_requests"))
     artifacts: Path = field(default=Path("./artifacts"))
+    datasets: Path = field(default=Path("./datasets"))
 
     def __post_init__(self):
         # super().__init__(*args, **kwargs)
@@ -35,4 +36,4 @@ class Paths:
 class ComputeEnvironment:
     paths: Paths = field(default_factory=lambda: Paths())
     postgres_host: str = "localhost"
-    postgres_port: str = "5432"
+    postgres_port: int = 5432

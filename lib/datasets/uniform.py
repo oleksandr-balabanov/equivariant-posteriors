@@ -3,7 +3,6 @@ import torch
 from dataclasses import dataclass
 from lib.dataspec import DataSpec
 from lib.data_utils import create_sample_legacy
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 
 
@@ -61,14 +60,6 @@ class DataUniform(torch.utils.data.Dataset):
         return create_sample_legacy(
             self.uniform.xs[idx], self.uniform.ys[idx], self.uniform.sample_ids[idx]
         )
-
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return create_metric_sample_legacy(output, batch, train_epoch_state)
 
     def __len__(self):
         return self.uniform.xs.shape[0]

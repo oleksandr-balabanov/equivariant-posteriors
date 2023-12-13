@@ -1,14 +1,17 @@
 from dataclasses import dataclass
 from collections.abc import Callable
+from typing import Dict
 import torch
 
 
 @dataclass
 class MetricSample:
-    output: torch.Tensor
-    prediction: torch.Tensor
-    target: torch.Tensor
-    sample_id: torch.Tensor
+    # output: torch.Tensor
+    # prediction: torch.Tensor
+    # target: torch.Tensor
+    output: Dict[str, torch.Tensor]
+    batch: Dict[str, torch.Tensor]
+    # sample_id: torch.Tensor
     epoch: int
     batch: int
 
@@ -25,9 +28,7 @@ class Metric:
         self,
         metric_fn: Callable[[torch.Tensor, torch.Tensor], object],
         metric_kwargs=None,
-        raw_output=False,
     ):
-        self.raw_output = raw_output
         self.values = dict()
         self.metric_fn = metric_fn
         self.metric_name = metric_fn.__name__
@@ -37,26 +38,19 @@ class Metric:
         self.batch_values = []
 
     def __call__(self, metric_sample: MetricSample):
-        output = metric_sample.output.detach()
+        # output = metric_sample.output.detach()
         # prediction = metric_sample.prediction.detach()
-        target = metric_sample.target.detach()
-        sample_id = metric_sample.sample_id.detach()
-        if self.raw_output:
-            values = (
-                self.metric_fn(preds=output, target=target, **self.metric_kwargs)
-                .detach()
-                .cpu()
+        # target = metric_sample.target.detach()
+        sample_id = metric_sample.batch["sample_id"].detach()
+        values = (
+            self.metric_fn(
+                output=metric_sample.output,
+                batch=metric_sample.batch,
+                **self.metric_kwargs
             )
-        else:
-            values = (
-                self.metric_fn(
-                    preds=metric_sample.prediction.detach(),
-                    target=target,
-                    **self.metric_kwargs
-                )
-                .detach()
-                .cpu()
-            )
+            .detach()
+            .cpu()
+        )
         key = MetricSampleKey(
             sample_id=sample_id, epoch=metric_sample.epoch, batch_idx=self.batch_idx
         )
@@ -91,3 +85,7 @@ class Metric:
 
     def name(self):
         return self.metric_name
+
+
+def create_metric(metric_fn):
+    return lambda: Metric(metric_fn)

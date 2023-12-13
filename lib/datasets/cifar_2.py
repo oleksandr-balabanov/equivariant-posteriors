@@ -5,7 +5,6 @@ import torchvision
 from dataclasses import dataclass
 from lib.dataspec import DataSpec
 from lib.data_utils import create_sample_legacy
-from lib.data_utils import create_metric_sample_legacy
 from lib.train_dataclasses import TrainEpochState
 
 
@@ -69,14 +68,6 @@ class DataCIFAR2(torch.utils.data.Dataset):
         # image = image.reshape(-1, 16 * 16)
         class_idx = self.class_map[cifar_sample[1]]
         return create_sample_legacy(cifar_sample[0], class_idx, idx)
-
-    def create_metric_sample(
-        self,
-        output: Dict[str, torch.Tensor],
-        batch: Dict[str, torch.Tensor],
-        train_epoch_state: TrainEpochState,
-    ):
-        return create_metric_sample_legacy(output, batch, train_epoch_state)
 
     def __len__(self):
         return len(self.CIFAR)

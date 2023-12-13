@@ -6,11 +6,13 @@ from dataclasses import dataclass
 import shutil
 import urllib3
 import os
+from datetime import datetime, timedelta
+from lib.compute_env import env
 
 # import ssl
 
 # ssl._create_default_https_context = ssl._create_unverified_context
-WEATHER_BASE = Path(os.getenv("WEATHER", "./"))
+WEATHER_BASE = Path(os.getenv("WEATHER", env().paths.datasets / "era5_lite"))
 ERA5_GRIB_DATA_PATH = WEATHER_BASE / "era5_grib_monthly"
 
 
@@ -18,6 +20,7 @@ ERA5_GRIB_DATA_PATH = WEATHER_BASE / "era5_grib_monthly"
 class ERA5SampleConfig:
     year: str
     month: str
+    day: str
     time: str
 
     def ident(self):
@@ -63,14 +66,25 @@ class ERA5Sample:
     DIMENSIONS = dict(pressure=0, u_wind=1, v_wind=2, temp=3)
 
 
+def add_timedelta(instance: ERA5SampleConfig, days=0, hours=0) -> ERA5SampleConfig:
+    date_time_str = f"{instance.year}-{instance.month}-{instance.day} {instance.time}"
+    date_time_obj = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+    new_date_time_obj = date_time_obj + timedelta(days=days, hours=hours)
+    return ERA5SampleConfig(
+        year=new_date_time_obj.strftime("%Y"),
+        month=new_date_time_obj.strftime("%m"),
+        day=new_date_time_obj.strftime("%d"),
+        time=new_date_time_obj.strftime("%H:%M:%S"),
+    )
+
+
 def get_era5_sample(sample_config: ERA5SampleConfig):
     ERA5_GRIB_DATA_PATH.mkdir(exist_ok=True, parents=True)
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    print(f"Downloading {sample_config}")
-    print(f"Target {ERA5_GRIB_DATA_PATH}")
-
     if not sample_config.surface_path().is_file():
+        print(f"Downloading {sample_config}")
+        print(f"Target {ERA5_GRIB_DATA_PATH}")
         get_surface_variables(
             sample_config.surface_grib_path(), **sample_config.__dict__
         )
@@ -88,8 +102,20 @@ def get_era5_sample(sample_config: ERA5SampleConfig):
         shutil.move(tmp_path, sample_config.upper_path())
         # np.save(sample_config.upper_path(), xr_grib.to_array().to_numpy())
 
-    surface_ds = xr.open_dataset(sample_config.surface_path())
-    upper_ds = xr.open_dataset(sample_config.upper_path())
+    os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+    surface_ds = xr.open_dataset(
+        sample_config.surface_path(), backend_kwargs=dict(lock=False)
+    )
+    upper_ds = xr.open_dataset(
+        sample_config.upper_path(), backend_kwargs=dict(lock=False)
+    )
+    surface_ds = surface_ds.sel(
+        time=f"{sample_config.year}-{sample_config.month}-{sample_config.day} {sample_config.time}"
+    )
+    upper_ds = upper_ds.sel(
+        time=f"{sample_config.year}-{sample_config.month}-{sample_config.day} {sample_config.time}"
+    )
+
     # surface = np.load(sample_config.surface_path()).astype(np.float32)
     # upper = np.load(sample_config.upper_path()).astype(np.float32)
 

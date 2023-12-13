@@ -1,10 +1,12 @@
 import torch
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 from typing import Callable
 from typing import Union
+from typing import Set
 
 from lib.metric import Metric
+from lib.timing_metric import Timing
 from lib.stable_hash import stable_hash
 import lib.serialize_human
 
@@ -16,6 +18,7 @@ class TrainEpochState:
     train_metrics: List[Metric]
     validation_metrics: List[Metric]
     train_dataloader: torch.utils.data.DataLoader
+    timing_metric: Timing
     epoch: int
     batch: int
     next_visualization: float
@@ -23,6 +26,7 @@ class TrainEpochState:
     val_dataloader: torch.utils.data.DataLoader = None
     device_memory_stats: dict = None
     host_memory_stats: object = None
+    psql_query_cache: Set = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -89,6 +93,7 @@ class TrainConfig:
             ),
             batch_size=self.batch_size,
             ensemble_id=self.ensemble_id,
+            extra=lib.serialize_human.serialize_human(self.extra),
         )
 
     def ensemble_dict(self):

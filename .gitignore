@@ -9,6 +9,9 @@ image.sif
 profile
 result
 database/
+ds/
+pg_database/
+distributed_training_requests/
 /datasets/
 results/
 *.npy

@@ -7,6 +7,7 @@ from lib.train_dataclasses import TrainEpochState
 from lib.train_dataclasses import TrainRun
 import lib.data_factory as data_factory
 from lib.metric import Metric
+from lib.timing_metric import Timing
 from lib.paths import get_checkpoint_path, get_or_create_checkpoint_path
 import lib.model_factory as model_factory
 from lib.data_utils import get_sampler
@@ -36,6 +37,7 @@ class FileStructure:
     train_metrics: object = None
     validation_metrics: object = None
     train_run: object = None
+    timing_metric: object = None
 
 
 def write_status_file(config: SerializeConfig):
@@ -70,6 +72,7 @@ def serialize(config: SerializeConfig):
         train_metrics=serialize_metrics(train_epoch_state.train_metrics),
         validation_metrics=serialize_metrics(train_epoch_state.validation_metrics),
         train_run=config.train_run.serialize_human(),
+        timing_metric=train_epoch_state.timing_metric.serialize(),
     )
 
     checkpoint_path = get_or_create_checkpoint_path(train_config)
@@ -112,8 +115,8 @@ def create_model(config: DeserializeConfig, state_dict: torch.Tensor):
     train_config = config.train_run.train_config
     data_spec = (
         data_factory.get_factory()
-        .get_class(train_config.val_data_config)
-        .data_spec(train_config.val_data_config)
+        .get_class(train_config.train_data_config)
+        .data_spec(train_config.train_data_config)
     )
     model = model_factory.get_factory().create(train_config.model_config, data_spec)
     model = model.to(torch.device(config.device_id))
@@ -198,13 +201,9 @@ def deserialize(config: DeserializeConfig):
     data_dict = file_data.__dict__
 
     train_ds = data_factory.get_factory().create(train_config.train_data_config)
-    val_ds = data_factory.get_factory().create(train_config.val_data_config)
 
     train_sampler, train_shuffle = get_sampler(
         config.train_run.compute_config, train_ds, shuffle=True
-    )
-    val_sampler, val_shuffle = get_sampler(
-        config.train_run.compute_config, val_ds, shuffle=False
     )
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -216,15 +215,22 @@ def deserialize(config: DeserializeConfig):
         num_workers=config.train_run.compute_config.num_workers,
         collate_fn=train_ds.collate_fn if hasattr(train_ds, "collate_fn") else None,
     )
-    val_dataloader = torch.utils.data.DataLoader(
-        val_ds,
-        batch_size=train_config.batch_size,
-        shuffle=False,
-        drop_last=False,
-        sampler=val_sampler,
-        num_workers=config.train_run.compute_config.num_workers,
-        collate_fn=val_ds.collate_fn if hasattr(val_ds, "collate_fn") else None,
-    )
+    if train_config.val_data_config is not None:
+        val_ds = data_factory.get_factory().create(train_config.val_data_config)
+        val_sampler, val_shuffle = get_sampler(
+            config.train_run.compute_config, val_ds, shuffle=False
+        )
+        val_dataloader = torch.utils.data.DataLoader(
+            val_ds,
+            batch_size=train_config.batch_size,
+            shuffle=False,
+            drop_last=False,
+            sampler=val_sampler,
+            num_workers=config.train_run.compute_config.num_workers,
+            collate_fn=val_ds.collate_fn if hasattr(val_ds, "collate_fn") else None,
+        )
+    else:
+        val_dataloader = None
 
     model = create_model(config, data_dict["model"])
     # model = model_factory.get_factory().create(
@@ -265,6 +271,9 @@ def deserialize(config: DeserializeConfig):
         )
         validation_metrics.append(metric_instance)
 
+    timing_metric = Timing()
+    timing_metric.deserialize(data_dict["timing_metric"])
+
     epoch = data_dict["epoch"]
 
     return TrainEpochState(
@@ -278,4 +287,5 @@ def deserialize(config: DeserializeConfig):
         val_dataloader=val_dataloader,
         next_visualization=0.0,
         next_visualizer=0,
+        timing_metric=timing_metric,
     )

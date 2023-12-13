@@ -38,12 +38,28 @@ def main():
     )
     train_eval = TrainEval(
         train_metrics=[
-            lambda: Metric(tm.functional.mean_absolute_error),
-            lambda: Metric(tm.functional.mean_squared_error),
+            lambda: Metric(
+                lambda output, batch: tm.functional.mean_absolute_error(
+                    output["predictions"], batch["target"]
+                )
+            ),
+            lambda: Metric(
+                lambda output, batch: tm.functional.mean_squared_error(
+                    output["predictions"], batch["target"]
+                )
+            ),
         ],
         validation_metrics=[
-            lambda: Metric(tm.functional.mean_absolute_error),
-            lambda: Metric(tm.functional.mean_squared_error),
+            lambda: Metric(
+                lambda output, batch: tm.functional.mean_absolute_error(
+                    output["predictions"], batch["target"]
+                )
+            ),
+            lambda: Metric(
+                lambda output, batch: tm.functional.mean_squared_error(
+                    output["predictions"], batch["target"]
+                )
+            ),
         ],
     )
     train_run = TrainRun(

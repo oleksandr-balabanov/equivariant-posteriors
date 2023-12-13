@@ -13,6 +13,8 @@ from lib.datasets.spiral_visualization import visualize_spiral
 from lib.models.mlp import MLPClassConfig
 from lib.generic_ablation import generic_ablation
 
+from lib.distributed_trainer import distributed_train
+
 
 def create_config(mlp_dim, ensemble_id):
     loss = torch.nn.CrossEntropyLoss()
@@ -44,8 +46,8 @@ def create_config(mlp_dim, ensemble_id):
 
 
 if __name__ == "__main__":
-    generic_ablation(
-        Path(__file__).parent / "results",
+    configs = generic_ablation(
         create_config,
         dict(mlp_dim=[200, 10, 50, 100, 200], ensemble_id=list(range(5))),
     )
+    distributed_train(configs)
