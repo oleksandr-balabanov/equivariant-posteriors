@@ -9,6 +9,7 @@ from lib.datasets.cifar_2 import DataCIFAR2Config, DataCIFAR2
 from lib.datasets.subset import DataSubsetConfig, DataSubset
 from lib.datasets.join import DataJoinConfig, DataJoin
 from lib.datasets.commonsense_qa import DataCommonsenseQaConfig, DataCommonsenseQa
+from lib.datasets.mmlu import DataMMLUConfig, DataMMLU
 
 # from experiments.lora_ensembles.configs import NLPDatasetConfig
 # from experiments.lora_ensembles.configs import NLPDataset
@@ -27,4 +28,5 @@ def register_datasets():
     datasets[DataSubsetConfig.__name__] = DataSubset
     datasets[DataJoinConfig.__name__] = DataJoin
     datasets[DataCommonsenseQaConfig.__name__] = DataCommonsenseQa
+    datasets[DataMMLUConfig.__name__] = DataMMLU
     return datasets
