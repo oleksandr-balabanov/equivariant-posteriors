@@ -50,13 +50,13 @@ class LLaMA2Generative(torch.nn.Module):
         outputs = dict(logits=outputs["logits"])
 
         # Add LoRA L2 loss to the output dic
-        outputs["lora_l2_loss"] = 0
+        outputs["lora_l2_loss"] = torch.tensor(0.0)
         if self.config.lora_l2 > 0:
             outputs["lora_l2_loss"] = self.config.lora_l2 * self.lora_l2_loss()
         return outputs
 
     def lora_l2_loss(self):
-        lora_l2_loss = 0.0
+        lora_l2_loss = torch.tensor(0.0)
         lora_pairs = {}
 
         # Group LoRA tensors by base names
