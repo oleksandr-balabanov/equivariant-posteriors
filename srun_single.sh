@@ -1,6 +1,6 @@
 #!/bin/sh
 set -x
-GPU=${GPU:-A40:1}
+GPU=${GPU:-A40:2}
 TIMESTAMP=$(date -d "today" +"%Y%m%d%H%M")
 SCRIPT_FILE=slurm_tmp/$TIMESTAMP.sh
 mkdir -p slurm_tmp

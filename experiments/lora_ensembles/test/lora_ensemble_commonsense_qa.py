@@ -17,6 +17,14 @@ from lib.train_dataclasses import TrainEval
 from lib.train_dataclasses import OptimizerConfig
 from lib.train_dataclasses import ComputeConfig
 
+from lib.ensemble import create_ensemble_config
+from lib.ensemble import request_ensemble
+from lib.models.llama2generative import LLaMA2GenerativeConfig
+from lib.metric import create_metric
+from lib.files import prepare_results
+
+from lib.distributed_trainer import distributed_train
+
 # from lib.generic_ablation import generic_ablation
 
 # import lib.data_factory as data_factory
@@ -174,27 +182,12 @@ def print_sample_comparison(input_ids, logits, labels, tokenizer):
 
 def main():
     print("Start")
-    if torch.cuda.is_available():
-        device_id = torch.device("cuda", int(os.environ.get("LOCAL_RANK", 0)))
-    else:
-        device_id = "cpu"
-    print("device finished")
     ensemble_config = create_ensemble_config(create_config, 1)
     prepare_results("lora_ensemble", ensemble_config.members)
     print("ensemble_config finished")
-    ensemble = create_ensemble(ensemble_config, device_id)
+    request_ensemble(ensemble_config)
+    distributed_train(ensemble_config.members)
     print("ensemble finished")
-    print(ensemble.n_members)
-
-    eval_dataset_config = DataCommonsenseQaConfig(
-        dataset="commonsense_qa",
-        model_checkpoint=LLaMA_CHECKPOINT,
-        max_len=100,
-        dataset_split="train",
-        num_samples=1,
-    )
-    eval_dataset = DataCommonsenseQa(eval_dataset_config)
-    evaluate(ensemble.members[0], eval_dataset, print_sample=True)
 
 
 if __name__ == "__main__":
