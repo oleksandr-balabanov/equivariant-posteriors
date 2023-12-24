@@ -17,7 +17,7 @@ import lib.serialize_human
 class DataCommonsenseQaConfig:
     dataset: str = "commonsense_qa"
     model_checkpoint: str = "meta-llama/Llama-2-7b-hf"
-    max_len: int = 100
+    max_len: int = 1024
     dataset_split: str = "train"
     num_samples: int = None
 
@@ -73,7 +73,13 @@ class DataCommonsenseQa(Dataset):
         self.collate_fn = transformers.DataCollatorWithPadding(tokenizer=self.tokenizer)
 
         self.max_token_size = self._find_max_input_size(self.tokenized_dataset)
-        print("Max token size of question: ", self.max_token_size)
+        print("Max token size of input sample: ", self.max_token_size)
+        print("a: ",  self.tokenizer.encode("A: (a)."))
+        print("b: ",  self.tokenizer.encode("A: (b)."))
+        print("c: ",  self.tokenizer.encode("A: (c)."))
+        print("d: ",  self.tokenizer.encode("A: (d)."))
+        print("e: ",  self.tokenizer.encode("A: (e)."))
+        print("Decode: ",  self.tokenizer.decode([29890, 29872, 29890, 29883, 29874, 29881, 29883, 29872]))
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0

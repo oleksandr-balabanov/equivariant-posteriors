@@ -41,6 +41,7 @@ class LLaMA2Generative(torch.nn.Module):
             target_modules=model_config.target_modules,
         )
         self.model = peft.get_peft_model(self.base_model, self.peft_config)
+        self.device = next(self.model.parameters()).device
 
     def forward(self, batch):
         outputs = self.model(
@@ -50,13 +51,13 @@ class LLaMA2Generative(torch.nn.Module):
         outputs = dict(logits=outputs["logits"])
 
         # Add LoRA L2 loss to the output dic
-        outputs["lora_l2_loss"] = torch.tensor(0.0)
+        outputs["lora_l2_loss"] = torch.tensor(0.0).to(self.device)
         if self.config.lora_l2 > 0:
             outputs["lora_l2_loss"] = self.config.lora_l2 * self.lora_l2_loss()
         return outputs
 
     def lora_l2_loss(self):
-        lora_l2_loss = torch.tensor(0.0)
+        lora_l2_loss = torch.tensor(0.0).to(self.device)
         lora_pairs = {}
 
         # Group LoRA tensors by base names
@@ -75,9 +76,21 @@ class LLaMA2Generative(torch.nn.Module):
         for base_name, matrices in lora_pairs.items():
             if len(matrices) == 2:  # Ensure there are exactly two matrices in the pair
                 loraA, loraB = matrices
+
+                # Perform SVD decomposition in economic (thin) format
+                #U_A, S_A, _ = torch.linalg.svd(loraA, full_matrices=False)
+                #_, S_B, V_B = torch.linalg.svd(loraB, full_matrices=False)
+
+                # Convert the vector S into a diagonal matrix
+                #S_A_matrix = torch.diag_embed(S_A)
+                #S_B_matrix = torch.diag_embed(S_B)
+
                 # Perform matrix multiplication on the last two dimensions
-                product = torch.matmul(loraA, loraB)
-                lora_l2_loss += torch.sum(product**2)
+                #total_matrix = S_B_matrix @ V_B.t() @ U_A @ S_A_matrix
+                #print(total_matrix.shape)
+                total_matrix = loraB @ loraA
+                #print(total_matrix.shape)
+                lora_l2_loss += torch.norm(total_matrix, 2)**2
 
         return lora_l2_loss
 
