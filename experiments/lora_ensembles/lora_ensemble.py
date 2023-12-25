@@ -40,7 +40,7 @@ def create_config(
     lora_rank=8,
     lora_alpha=32,
     lora_dropout=0.0,
-    lora_l2=0.1,
+    lora_l2=0,
     regular_l2=0.01,
     target_modules=["q_proj", "v_proj"],
 ):
