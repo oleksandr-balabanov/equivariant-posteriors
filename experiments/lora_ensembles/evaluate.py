@@ -26,38 +26,32 @@ from experiments.lora_ensembles.lora_ensemble import create_config, LLaMA_CHECKP
 
 import torch
 import torch.nn.functional as F
+from experiments.lora_ensembles.generative_llm_losses import (
+    create_single_token_attention_mask
+)
+from experiments.lora_ensembles.metrics import (
+    create_metric_sample_single_token_task,
+    create_metric_sample_next_token_task
+)
 
-def filter_out_single_token_logits(logits):
+def calculate_softmax_probs_ensemble(outputs_list, batch, create_metric_sample=create_metric_sample_single_token_task):
+    softmax_probs_ensemble = []
 
-    input_ids = batch["input_ids"]
-    attention_mask = batch["attention_mask"]
-
-    # Find the index of the first zero in the attention mask of the first example in the batch.
-    # This (index - 2) is assumed to be the position of the "answer token" in the sequence.
-    index_of_zero = (attention_mask[0] == 0).nonzero(as_tuple=True)[0]
-    if len(index_of_zero) > 0:
-        answer_index = index_of_zero[0].item() - 2
-    else:
-        # Default to the last token before padding if no zero is found.
-        answer_index = -2
-
-    # Extract logits from the model output corresponding to the answer token
-    logits = output["logits"][:, answer_index - 1, :]
-    
-
-def calculate_softmax_probabilities(outputs_list, preprocess_logits=filter_out_single_token_logits):
-    """
-    Calculate softmax probabilities for each model in the ensemble.
-
-    :param outputs_list: List of outputs from the ensemble models.
-    :return: List of softmax probabilities for each model.
-    """
-    softmax_probabilities = []
     for output in outputs_list:
-        logits = prepare_logits(output["logits"])
-        probabilities = F.softmax(logits, dim=-1)
-        softmax_probabilities.append(probabilities)
-    return softmax_probabilities
+        metric_sample = create_metric_sample(output, batch)
+        
+        # Extract softmax probabilities
+        softmax_probs = metric_sample["prediction"]
+        softmax_probs_ensemble.append(softmax_probs)
+
+    return softmax_probs_ensemble
+
+
+def calculate_mean_of_softmax_probs(softmax_probs_ensemble):
+    # Calculate the mean of the softmax probabilities
+    mean_softmax_probs = sum(softmax_probs_ensemble) / len(softmax_probs_ensemble)
+    return mean_softmax_probs
+
 
 def calculate_mean_probabilities(softmax_probabilities):
     """

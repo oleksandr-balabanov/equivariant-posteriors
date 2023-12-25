@@ -11,15 +11,21 @@ def generative_loss(
 
     # Set input_ids for masked tokens to -100 so they are not used in loss computation
     input_ids[attention_mask == 0] = -100
-    print(input_ids[attention_mask != 0])
+    #print(input_ids[attention_mask != 0])
 
     # labels
     labels = input_ids.clone()
     labels[:, :-1] = input_ids.clone()[:, 1:]
     labels[:, -1] = -100  # Ignore the loss for the last token
+    #print(labels[labels != -100])
 
     # loss
     logits = output["logits"]
+    
+    # Apply argmax on the num_classes dimension
+    # predicted_classes = torch.argmax(logits, dim=-1)
+    # print(predicted_classes[labels != -100])
+    
     # Reshape logits to [batch_size * sequence_length, num_classes]
     # Reshape labels to [batch_size * sequence_length]
     loss_batch = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1))
