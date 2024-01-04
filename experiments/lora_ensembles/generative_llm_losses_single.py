@@ -4,27 +4,19 @@ import torch
 
 # Define Loss Function for Conventional Next Token Generative Task
 def generative_loss(
-        output, 
+        logits, 
         input_ids,
         attention_mask
     ):
 
     # Set input_ids for masked tokens to -100 so they are not used in loss computation
     input_ids[attention_mask == 0] = -100
-    #print(input_ids[attention_mask != 0])
 
     # labels
     labels = input_ids.clone()
     labels[:, :-1] = input_ids.clone()[:, 1:]
     labels[:, -1] = -100  # Ignore the loss for the last token
-    #print(labels[labels != -100])
-
-    # loss
-    logits = output["logits"]
     
-    # Apply argmax on the num_classes dimension
-    # predicted_classes = torch.argmax(logits, dim=-1)
-    # print(predicted_classes[labels != -100])
     
     # Reshape logits to [batch_size * sequence_length, num_classes]
     # Reshape labels to [batch_size * sequence_length]
@@ -35,8 +27,9 @@ def generative_loss(
 def generative_next_token_loss(output, batch):
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
+    logits = output["logits"]
     return generative_loss(
-        output, 
+        logits, 
         input_ids, 
         attention_mask
     )
@@ -48,12 +41,13 @@ def generative_single_token_loss(
     ):
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
+    logits = output["logits"]
     single_token_attention_mask = create_single_token_attention_mask(
         attention_mask, 
         target_token_position_wrt_attention_mask
     )
     return generative_loss(
-        output, 
+        logits, 
         input_ids, 
         single_token_attention_mask
     )

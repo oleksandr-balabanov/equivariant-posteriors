@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import torch
 
-from experiments.lora_ensembles.generative_llm_losses import (
+from experiments.lora_ensembles.generative_llm_losses_single import (
     generative_next_token_and_lora_l2,
     generative_next_token_loss,
     generative_single_token_and_lora_l2,
@@ -27,19 +27,19 @@ from experiments.lora_ensembles.metrics import accuracy, calibration_error
 
 
 # LLaMA Checkpoint
-# LLaMA_CHECKPOINT = "meta-llama/Llama-2-7b-hf"
+# LLaMA_CHECKPOINT = "meta-llama/Llama-2-7b-hf" 
 LLaMA_CHECKPOINT = "meta-llama/Llama-2-13b-hf"
 
 # Configuration for Training
 def create_config(
     ensemble_id,
     checkpoint=LLaMA_CHECKPOINT,
-    epochs=5,
+    epochs=20,
     batch_size=8,
-    learning_rate=0.00005,
+    learning_rate=0.00001,
     lora_rank=8,
     lora_alpha=32,
-    lora_dropout=0.0,
+    lora_dropout=0,
     lora_l2=0,
     regular_l2=0.01,
     target_modules=["q_proj", "v_proj"],
@@ -58,14 +58,12 @@ def create_config(
             model_checkpoint=LLaMA_CHECKPOINT,
             max_len=128,
             dataset_split="train",
-            #num_samples=1,
         ),
         val_data_config=DataCommonsenseQaConfig(
             dataset="commonsense_qa",
             model_checkpoint=LLaMA_CHECKPOINT,
-            max_len=150,
-            dataset_split="test",
-            #num_samples=1,
+            max_len=128,
+            dataset_split="validation",
         ),
         loss=generative_single_token_and_lora_l2,
         optimizer=OptimizerConfig(
@@ -81,14 +79,12 @@ def create_config(
         train_metrics=[
             create_metric(accuracy),
             create_metric(calibration_error),
-            #create_metric(generative_next_token_and_lora_l2),
             create_metric(generative_single_token_loss),
             create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
         ],
         validation_metrics=[
             create_metric(accuracy),
             create_metric(calibration_error),
-            #create_metric(generative_next_token_and_lora_l2),
             create_metric(generative_single_token_loss),
             create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
         ],

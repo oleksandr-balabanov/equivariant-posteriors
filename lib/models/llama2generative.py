@@ -76,20 +76,7 @@ class LLaMA2Generative(torch.nn.Module):
         for base_name, matrices in lora_pairs.items():
             if len(matrices) == 2:  # Ensure there are exactly two matrices in the pair
                 loraA, loraB = matrices
-
-                # Perform SVD decomposition in economic (thin) format
-                #U_A, S_A, _ = torch.linalg.svd(loraA, full_matrices=False)
-                #_, S_B, V_B = torch.linalg.svd(loraB, full_matrices=False)
-
-                # Convert the vector S into a diagonal matrix
-                #S_A_matrix = torch.diag_embed(S_A)
-                #S_B_matrix = torch.diag_embed(S_B)
-
-                # Perform matrix multiplication on the last two dimensions
-                #total_matrix = S_B_matrix @ V_B.t() @ U_A @ S_A_matrix
-                #print(total_matrix.shape)
                 total_matrix = loraB @ loraA
-                #print(total_matrix.shape)
                 lora_l2_loss += torch.norm(total_matrix, 2)**2
 
         return lora_l2_loss
