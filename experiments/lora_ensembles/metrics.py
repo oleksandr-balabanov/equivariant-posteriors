@@ -3,92 +3,81 @@ import torchmetrics as tm
 import torch.nn.functional as F
 from typing import Dict
 
-from experiments.lora_ensembles.generative_llm_losses import (
+from experiments.lora_ensembles.generative_llm_losses_single import (
     create_single_token_attention_mask
 )
 
-def create_metric_sample_general_task(
-    input_ids,
-    attention_mask,
-    logits
-):
-    # Set input_ids for masked tokens to -100 so they are not used in loss computation
+def create_metric_sample_general(input_ids, attention_mask, logits):
+    """
+    Create a metric sample for general tasks by processing input ids, attention mask, and logits.
+    """
+    # Mask input_ids for masked tokens
     input_ids[attention_mask == 0] = -100 
 
-    # labels
+    # Prepare labels
     labels = input_ids.clone()
-    labels[:, :-1] = input_ids.clone()[:, 1:]
+    labels[:, :-1] = input_ids[:, 1:]
     labels[:, -1] = -100
 
-    # reshape to [batch_size * sequence_length, num_classes] and [batch_size * sequence_length]
+    # Reshape logits and labels for loss computation
     logits = logits.view(-1, logits.size(-1))
     labels = labels.view(-1)
 
-    # Create a mask for filtering out ignored indices
-    mask = labels != -100
+    # Create a mask to filter out ignored indices
+    valid_indices_mask = labels != -100
+    logits = logits[valid_indices_mask]
+    labels = labels[valid_indices_mask]
 
-    # Apply the mask to filter both predictions and targets
-    logits = logits[mask]
-    labels = labels[mask]
-    predicted_tokens = torch.argmax(logits, dim=-1)
-    print("Predicted Tokens: ", predicted_tokens)
-    print("True Labels: ", labels)
+    return {
+        'output': logits.detach(),
+        'predictions': F.softmax(logits, dim=-1).detach(),
+        'targets': labels.detach(),
+    }
 
-    return dict(
-        output=logits.detach(),
-        prediction=F.softmax(logits, dim=-1).detach(),
-        target=labels.detach(),
-    )
-
-
-def create_metric_sample_next_token_task(
-    output: Dict[str, torch.Tensor],
-    batch: Dict[str, torch.Tensor],
-):
+def create_metric_sample_next_token(output, batch):
+    """
+    Create a metric sample for next token prediction tasks.
+    """
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
     logits = output["logits"].view(-1, output["logits"].size(-1))
 
-    metric_sample = create_metric_sample_general_task(input_ids, attention_mask, logits)
+    return create_metric_sample_general(input_ids, attention_mask, logits)
 
-    return metric_sample
-
-
-def create_metric_sample_single_token_task(
-    output: Dict[str, torch.Tensor],
-    batch: Dict[str, torch.Tensor],
-):
+def create_metric_sample_single_token(output, batch, target_token_position=-2):
+    """
+    Create a metric sample for single token prediction tasks.
+    """
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
     logits = output["logits"].view(-1, output["logits"].size(-1))
 
     single_token_attention_mask = create_single_token_attention_mask(
         attention_mask, 
-        target_token_position_wrt_attention_mask=-2,
+        target_token_position,
     )
 
-    metric_sample = create_metric_sample_general_task(input_ids, single_token_attention_mask, logits)
-
-    return metric_sample
+    return create_metric_sample_general(input_ids, single_token_attention_mask, logits)
 
 
-def calibration_error(output, batch, create_metric_sample=create_metric_sample_single_token_task):
+
+def calibration_error(output, batch, metric_sample_creator=create_metric_sample_single_token):
     num_classes = output["logits"].shape[-1]
-    metric_sample = create_metric_sample(output, batch)
+    metric_sample = metric_sample_creator(output, batch)
     return tm.functional.classification.calibration_error(
-        metric_sample["prediction"],
-        metric_sample["target"],
+        metric_sample["predictions"],
+        metric_sample["targets"],
         n_bins=15,
         num_classes=num_classes,
         task="multiclass",
     )
 
-def accuracy(output, batch, create_metric_sample=create_metric_sample_single_token_task):
+def accuracy(output, batch, metric_sample_creator=create_metric_sample_single_token):
     num_classes = output["logits"].shape[-1]
-    metric_sample = create_metric_sample(output, batch)
+    metric_sample = metric_sample_creator(output, batch)
     return tm.functional.accuracy(
-        metric_sample["prediction"],
-        metric_sample["target"],
+        metric_sample["predictions"],
+        metric_sample["targets"],
         task="multiclass",
         num_classes=num_classes,
     )

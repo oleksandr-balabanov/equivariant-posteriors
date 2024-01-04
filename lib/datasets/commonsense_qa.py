@@ -80,6 +80,7 @@ class DataCommonsenseQa(Dataset):
         print("d: ",  self.tokenizer.encode("A: (d)."))
         print("e: ",  self.tokenizer.encode("A: (e)."))
         print("Decode: ",  self.tokenizer.decode([29890, 29872, 29890, 29883, 29874, 29881, 29883, 29872]))
+        print(formatted_dataset[0])
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0
