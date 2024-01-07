@@ -33,14 +33,14 @@ LLaMA_CHECKPOINT = "meta-llama/Llama-2-13b-hf"
 def create_config(
     ensemble_id,
     checkpoint=LLaMA_CHECKPOINT,
-    epochs=2,
+    epochs=10,
     batch_size=8,
     learning_rate=0.00001,
     lora_rank=8,
     lora_alpha=32,
-    lora_dropout=0,
-    lora_l2=0,
-    regular_l2=0.01,
+    lora_dropout=0.1,
+    lora_l2=0.01,
+    regular_l2=0,
     target_modules=["q_proj", "v_proj"],
 ):
     train_config = TrainConfig(
