@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import torch
 
-from experiments.lora_ensembles.generative_llm_losses_single import (
+from experiments.lora_ensembles.generative_llm_losses import (
     generative_next_token_and_lora_l2,
     generative_next_token_loss,
     generative_single_token_and_lora_l2,
@@ -23,18 +23,17 @@ from lib.data_registry import DataCommonsenseQaConfig
 
 from lib.distributed_trainer import distributed_train
 
-from experiments.lora_ensembles.metrics import accuracy, calibration_error
+from experiments.lora_ensembles.lora_ens_metrics import accuracy, calibration_error
 
 
 # LLaMA Checkpoint
-# LLaMA_CHECKPOINT = "meta-llama/Llama-2-7b-hf" 
 LLaMA_CHECKPOINT = "meta-llama/Llama-2-13b-hf"
 
 # Configuration for Training
 def create_config(
     ensemble_id,
     checkpoint=LLaMA_CHECKPOINT,
-    epochs=20,
+    epochs=2,
     batch_size=8,
     learning_rate=0.00001,
     lora_rank=8,
@@ -104,7 +103,7 @@ def create_config(
 
 def main():
     print("Start")
-    ensemble_config = create_ensemble_config(create_config, 1)
+    ensemble_config = create_ensemble_config(create_config, 5)
     prepare_results("lora_ensemble", ensemble_config.members)
     print("ensemble_config finished")
     request_ensemble(ensemble_config)
