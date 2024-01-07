@@ -2,28 +2,44 @@ from dataclasses import dataclass, field
 import transformers
 import peft
 import torch
+from torch import Tensor, nn
 from lib.dataspec import DataSpec
 import lib.serialize_human
-from typing import List
+from typing import List, Dict
 import lib.ddp as ddp
 
-
-# Define LLaMA 2 Configuration
 @dataclass
 class LLaMA2GenerativeConfig:
+    """
+    Configuration class for LLaMA 2 Generative model.
+
+    Attributes:
+    - checkpoint (str): Pretrained model checkpoint path.
+    - lora_rank (int): LoRA rank for model adjustments.
+    - lora_alpha (float): LoRA alpha value for scaling.
+    - lora_dropout (float): Dropout rate for LoRA layers.
+    - lora_l2 (float): L2 regularization term for LoRA.
+    - target_modules (List[str]): List of module names to target for LoRA adjustments.
+    """
     checkpoint: str = "meta-llama/Llama-2-7b-hf"
-    lora_rank: int = 16
+    lora_rank: int = 8
     lora_alpha: float = 16
     lora_dropout: float = 0.0
     lora_l2: float = 0.0
     target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
 
-    def serialize_human(self):
+    def serialize_human(self) -> str:
+        """Converts configuration data to a human-readable string."""
         return lib.serialize_human.serialize_human(self.__dict__)
 
+class LLaMA2Generative(nn.Module):
+    """
+    PyTorch module for LLaMA 2 Generative model with PEFT (Parameter-efficient Fine-tuning).
 
-# Define LLaMA 2 Model with PEFT
-class LLaMA2Generative(torch.nn.Module):
+    Attributes:
+    - model_config (LLaMA2GenerativeConfig): Configuration for the LLaMA 2 model.
+    - data_config (DataSpec): Data specification for input data.
+    """
     def __init__(self, model_config: LLaMA2GenerativeConfig, data_config: DataSpec):
         super().__init__()
         self.config = model_config
@@ -43,46 +59,67 @@ class LLaMA2Generative(torch.nn.Module):
         self.model = peft.get_peft_model(self.base_model, self.peft_config)
         self.device = next(self.model.parameters()).device
 
-    def forward(self, batch):
+    def forward(self, batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        """
+        Forward pass for the model.
+
+        Args:
+        - batch (Dict[str, Tensor]): Input batch containing 'input_ids' and 'attention_mask'.
+
+        Returns:
+        - Dict[str, Tensor]: Model outputs including logits and optionally LoRA L2 loss.
+        """
         outputs = self.model(
             input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
         )
-
         outputs = dict(logits=outputs["logits"])
 
-        # Add LoRA L2 loss to the output dic
         outputs["lora_l2_loss"] = torch.tensor(0.0).to(self.device)
         if self.config.lora_l2 > 0:
             outputs["lora_l2_loss"] = self.config.lora_l2 * self.lora_l2_loss()
         return outputs
 
-    def lora_l2_loss(self):
+    def lora_l2_loss(self) -> Tensor:
+        """
+        Calculate the L2 loss for LoRA parameters.
+
+        Returns:
+        - Tensor: The calculated L2 loss.
+        """
         lora_l2_loss = torch.tensor(0.0).to(self.device)
         lora_pairs = {}
 
-        # Group LoRA tensors by base names
         for name, param in self.model.named_parameters():
             if "lora" in name:
-                # Find the last occurrence of 'lora'
                 last_lora_index = name.rfind("lora")
-                # Extract everything up to that point as the base name
                 base_name = name[:last_lora_index]
 
                 if base_name not in lora_pairs:
                     lora_pairs[base_name] = []
                 lora_pairs[base_name].append(param)
 
-        # Calculate modified L2 loss for each pair
         for base_name, matrices in lora_pairs.items():
-            if len(matrices) == 2:  # Ensure there are exactly two matrices in the pair
+            if len(matrices) == 2:
                 loraA, loraB = matrices
                 total_matrix = loraB @ loraA
                 lora_l2_loss += torch.norm(total_matrix, 2)**2
 
         return lora_l2_loss
 
-    def state_dict(self, **kwargs):
-        """Override state_dict with only adapter weights"""
+    def state_dict(self, **kwargs) -> Dict[str, Tensor]:
+        """
+        Override state_dict with only adapter weights.
+
+        Correct key mismatches in the state_dict due to naming differences in LoRA layers.
+        Specifically, this modifies the keys to include the '.default.' segment where necessary,
+        aligning the keys in the provided state_dict with the format expected by the PEFT model.
+
+        Args:
+        - kwargs: Additional arguments.
+
+        Returns:
+        - Dict[str, Tensor]: State dictionary with adapter weights.
+        """
         state_dict = peft.get_peft_model_state_dict(self.model)
         updated_state_dict = {}
         for key, value in state_dict.items():
@@ -90,14 +127,17 @@ class LLaMA2Generative(torch.nn.Module):
             new_key = new_key.replace("lora_B.weight", "lora_B.default.weight")
             updated_state_dict[new_key] = value
         prefix = ""
-        # if "prefix" in kwargs:
-        #     prefix = kwargs["prefix"]
         updated_state_dict = {f"{prefix}{k}": v for k, v in updated_state_dict.items()}
         return updated_state_dict
 
-    def load_state_dict(self, state_dict, strict=False):
-        """Correct key mismatches in the state_dict due to naming differences in LoRA layers.
-        Specifically, this modifies the keys to include the '.default.' segment where necessary,
-        aligning the keys in the provided state_dict with the format expected by the PEFT model.
+    def load_state_dict(self, state_dict: Dict[str, Tensor], strict: bool = False) -> None:
+        
         """
-        self.model.load_state_dict(state_dict, strict=False)
+        Override state_dict to load adapter weights with non-strict loading.
+
+        Args:
+        - state_dict (Dict[str, Tensor]): State dictionary to load.
+        - strict (bool): Indicates whether strict loading should be enforced. 
+          If set to False, which is the default, the loading will not be strict.
+        """
+        self.model.load_state_dict(state_dict, strict=strict)
