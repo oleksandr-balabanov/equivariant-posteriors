@@ -362,19 +362,24 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     dataset_one: torch.utils.data.Dataset, 
     dataset_two: torch.utils.data.Dataset, 
     device: torch.device
-) -> Dict[str, Dict[str, Union[float, torch.Tensor]]]:
+) -> Dict[str, float]:
     """
-    Evaluate the LORA ensemble on two datasets and calculate their performances along with OOD score.
+    Evaluate the LORA ensemble on two distinct datasets and calculate Out-Of-Distribution (OOD) performance.
+    This function assesses accuracy, loss, and calibration error on each dataset and computes the OOD score 
+    between the datasets.
 
     Args:
         lora_ensemble (LORAEnsemble): The ensemble of LoRA models.
-        dataset_one (torch.utils.data.Dataset): The first dataset.
-        dataset_two (torch.utils.data.Dataset): The second dataset.
-        device (torch.device): The device to perform calculations on.
+        dataset_one (torch.utils.data.Dataset): The first dataset for evaluation.
+        dataset_two (torch.utils.data.Dataset): The second dataset for evaluation.
+        device (torch.device): The device on which computations will be performed.
 
     Returns:
-        Dict[str, Dict[str, Union[float, torch.Tensor]]]: Performance metrics for each dataset and the OOD score.
+        Dict[str, float]: A dictionary containing accuracy ('acc_one', 'acc_two'), 
+        loss ('loss_one', 'loss_two'), calibration error ('ce_one', 'ce_two') for each dataset, 
+        and the OOD score ('ood_score') between them.
     """
+    
     # Evaluate on the first dataset
     acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(lora_ensemble, dataset_one, device)
 
@@ -387,8 +392,12 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     print_single_dataset_odd(ood_score, dataset_one.data_config.dataset, dataset_two.data_config.dataset)
 
     return {
-        "dataset_one": {"accuracy": acc_one, "loss": loss_one, "calibration_error": ce_one},
-        "dataset_two": {"accuracy": acc_two, "loss": loss_two, "calibration_error": ce_two},
+        "acc_one": acc_one, 
+        "loss_one": loss_one, 
+        "ce_one": ce_one,
+        "acc_two": acc_two, 
+        "loss_two": loss_two, 
+        "ce_two": ce_two,
         "ood_score": ood_score
     }
 
