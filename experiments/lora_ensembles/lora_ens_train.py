@@ -38,9 +38,9 @@ def create_config(
     learning_rate=0.00001,
     lora_rank=8,
     lora_alpha=32,
-    lora_dropout=0.1,
-    lora_l2=0.01,
-    regular_l2=0,
+    lora_dropout=0,
+    lora_l2=0,
+    regular_l2=0.01,
     target_modules=["q_proj", "v_proj"],
 ):
     train_config = TrainConfig(
@@ -65,6 +65,7 @@ def create_config(
             dataset_split="validation",
         ),
         loss=generative_single_token_and_lora_l2,
+        #loss = generative_next_token_and_lora_l2,
         optimizer=OptimizerConfig(
             optimizer=torch.optim.AdamW,
             kwargs=dict(weight_decay=regular_l2, lr=learning_rate),
@@ -79,13 +80,15 @@ def create_config(
             create_metric(accuracy),
             create_metric(calibration_error),
             create_metric(generative_single_token_loss),
-            create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
+            create_metric(generative_next_token_loss),
+            #create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
         ],
         validation_metrics=[
             create_metric(accuracy),
             create_metric(calibration_error),
             create_metric(generative_single_token_loss),
-            create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
+            create_metric(generative_next_token_loss),
+            #create_metric(lambda output, batch: output["lora_l2_loss"], name="lora_l2"),
         ],
         data_visualizer=None,
     )
