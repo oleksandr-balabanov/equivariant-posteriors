@@ -16,7 +16,8 @@ from lib.train_dataclasses import ComputeConfig
 
 from lib.ensemble import create_ensemble_config
 from lib.ensemble import request_ensemble
-from lib.models.llama2generative import LLaMA2GenerativeConfig
+from lib.models.llama2_generative import LLaMA2GenerativeConfig
+from lib.models.mistral_generative import MistralGenerativeConfig
 from lib.metric import create_metric
 from lib.files import prepare_results
 from lib.data_registry import DataCommonsenseQaConfig
@@ -29,13 +30,16 @@ from experiments.lora_ensembles.lora_ens_metrics import accuracy, calibration_er
 # LLaMA Checkpoint
 LLaMA_CHECKPOINT = "meta-llama/Llama-2-13b-hf"
 
+# Mistral Checkpoint
+MISTRAL_CHECKPOINT = "mistralai/Mistral-7B-v0.1"
+
 # Configuration for Training
 def create_config(
     ensemble_id,
-    checkpoint=LLaMA_CHECKPOINT,
+    checkpoint=MISTRAL_CHECKPOINT,
     epochs=10,
     batch_size=8,
-    learning_rate=0.00001,
+    learning_rate=0.000005,
     lora_rank=8,
     lora_alpha=32,
     lora_dropout=0,
@@ -44,7 +48,7 @@ def create_config(
     target_modules=["q_proj", "v_proj"],
 ):
     train_config = TrainConfig(
-        model_config=LLaMA2GenerativeConfig(
+        model_config=MistralGenerativeConfig(
             checkpoint=checkpoint,
             lora_rank=lora_rank,
             lora_alpha=lora_alpha,

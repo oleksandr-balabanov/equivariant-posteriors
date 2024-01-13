@@ -11,9 +11,11 @@ from lib.models.mlp_proj import MLPProjClass, MLPProjClassConfig
 from lib.models.resnet import Resnet, ResnetConfig
 from lib.models.swin_transformer_v2 import SwinTiny, SwinTinyConfig
 
-from lib.models.llama2generative import LLaMA2Generative, LLaMA2GenerativeConfig
 from experiments.weather.models.swin_hp_pangu import SwinHPPanguConfig
 from experiments.weather.models.swin_hp_pangu import SwinHPPangu
+
+from lib.models.llama2_generative import LLaMA2Generative, LLaMA2GenerativeConfig
+from lib.models.mistral_generative import MistralGenerative, MistralGenerativeConfig
 
 
 class _ModelFactory:
@@ -31,6 +33,7 @@ class _ModelFactory:
         self.models[SwinTinyConfig.__name__] = SwinTiny
         self.models[LLaMA2GenerativeConfig.__name__] = LLaMA2Generative
         self.models[SwinHPPanguConfig.__name__] = SwinHPPangu
+        self.models[MistralGenerativeConfig.__name__] = MistralGenerative
 
     def register(self, config_class, model_class):
         self.models[config_class.__name__] = model_class
