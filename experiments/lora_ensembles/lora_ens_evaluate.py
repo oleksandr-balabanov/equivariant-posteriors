@@ -8,7 +8,7 @@ from experiments.lora_ensembles.lora_ens_metrics import create_metric_sample_sin
 from lib.ensemble import create_ensemble_config
 from lib.data_registry import DataCommonsenseQaConfig, DataCommonsenseQa
 from experiments.lora_ensembles.lora_ens_inference import create_lora_ensemble, LORAEnsemble
-from experiments.lora_ensembles.lora_ens_train import create_config, LLaMA_CHECKPOINT
+from experiments.lora_ensembles.lora_ens_train import create_config, LLaMA_CHECKPOINT, MISTRAL_CHECKPOINT
 
 IGNORE_INDEX = -100
 
@@ -97,7 +97,7 @@ def calculate_ens_softmax_probs_and_targets(
 
     with torch.no_grad():
         for i_batch, batch in enumerate(eval_loader):
-            if i_batch % 1 == 0:
+            if i_batch % 100 == 0:
                 print("Batch: ", i_batch)
             reshaped_batch = {
                 "input_ids": batch["input_ids"].to(device),
@@ -106,11 +106,7 @@ def calculate_ens_softmax_probs_and_targets(
             try:
                 outputs_list = lora_ensemble.ensemble_forward(batch=reshaped_batch)
                 softmax_probs_ensemble = calculate_softmax_probs_ensemble(outputs_list, reshaped_batch)
-                #print(softmax_probs_ensemble[:, :, 29872:29892])
                 targets_ensemble = calculate_targets_ensemble(outputs_list, reshaped_batch)
-
-                #print(targets_ensemble)
-                #print("----------------------------------")
             except Exception as e:
                 print(f"Error during model forward pass: {e}")
                 continue
@@ -120,7 +116,6 @@ def calculate_ens_softmax_probs_and_targets(
 
     final_targets = torch.cat(accumulated_targets)
     final_ens_softmax_probs = torch.cat(accumulated_ens_probs, dim=1)
-    #print(final_ens_softmax_probs[:, :, 29872:29892])
 
     return final_ens_softmax_probs, final_targets
 
@@ -138,26 +133,16 @@ def calculate_accuracy_over_ens(
     Returns:
         float: Accuracy of the ensemble.
     """
-    #print(softmax_probs_ensemble[:, :, 29872:29892])
     mean_softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
-    for i_model in range(4):
-        predicted_labels = torch.argmax(softmax_probs_ensemble[i_model], dim=-1)
-        #print(predicted_labels)
-        correct_predictions = torch.sum(predicted_labels == final_targets)
-        accuracy = correct_predictions.item() / len(final_targets)
-        print(f"Accuracy model {i_model}: {accuracy}")
-        #print(correct_predictions)
     predicted_labels = torch.argmax(mean_softmax_probs, dim=-1)
     correct_predictions = torch.sum(predicted_labels == final_targets)
     accuracy = correct_predictions.item() / len(final_targets)
 
     return accuracy
 
-RELEVANT_CLASSES = [29874, 29890, 29883, 29881, 29872]
 def calculate_generative_loss_ens(
     ens_softmax_probs: torch.Tensor, 
     ens_targets: torch.Tensor, 
-    relevant_classes: List[int] = RELEVANT_CLASSES,
     epsilon: float = 1e-6
 ) -> torch.Tensor:
     """
@@ -166,27 +151,20 @@ def calculate_generative_loss_ens(
     Args:
         ens_softmax_probs (torch.Tensor): Ensemble softmax probabilities.
         ens_targets (torch.Tensor): Ensemble targets.
-        relevant_classes (List[int]): List of relevant class IDs.
         epsilon (float): Small value to prevent log(0). Default is 1e-6.
 
     Returns:
         torch.Tensor: Calculated loss.
     """
-    # Extract the probabilities of the relevant classes
-    relevant_probs = ens_softmax_probs[:, :, relevant_classes]
 
     # Calculate the mean softmax probabilities for the relevant classes
-    mean_softmax_probs = calculate_mean_softmax_probs(relevant_probs)
+    mean_softmax_probs = calculate_mean_softmax_probs(ens_softmax_probs)
 
     # Log probabilities
     log_probs = torch.log(mean_softmax_probs + epsilon)
 
-    # Map ens_targets to the range 0 to len(relevant_classes)-1
-    class_mapping = {class_id: i for i, class_id in enumerate(relevant_classes)}
-    mapped_targets = torch.tensor([class_mapping[target.item()] for target in ens_targets], device=ens_softmax_probs.device)
-
     # Calculate loss
-    loss = F.nll_loss(log_probs, mapped_targets, reduction='mean', ignore_index=IGNORE_INDEX)
+    loss = F.nll_loss(log_probs, ens_targets, reduction='mean', ignore_index=IGNORE_INDEX)
     return loss
 
 def calculate_ce_over_ens(
@@ -462,23 +440,22 @@ def main():
     """
     try:
         device = ddp_setup()
-        ensemble_config = create_ensemble_config(create_inference_config, 4)
+        ensemble_config = create_ensemble_config(create_inference_config, 1)
         lora_ensemble = create_lora_ensemble(ensemble_config.members, device)
 
         # Evaluate on in-domain dataset
         in_domain_dataset_config = DataCommonsenseQaConfig(
             dataset="commonsense_qa",
-            model_checkpoint=LLaMA_CHECKPOINT,
+            model_checkpoint=MISTRAL_CHECKPOINT,
             max_len=150,
             dataset_split="validation",
-            #num_samples = 500,
         )
         in_domain_dataset = DataCommonsenseQa(in_domain_dataset_config)
 
         # Evaluate on out-of-domain dataset
         out_of_domain_dataset_config = DataCommonsenseQaConfig(
             dataset="commonsense_qa",
-            model_checkpoint=LLaMA_CHECKPOINT,
+            model_checkpoint=MISTRAL_CHECKPOINT,
             max_len=150,
             dataset_split="validation",
             num_samples = 2,

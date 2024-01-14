@@ -24,11 +24,12 @@ def create_metric_sample_general(input_ids: Tensor, attention_mask: Tensor, logi
     - Dict[str, Tensor]: A dictionary containing outputs, predictions, and targets for metrics calculation.
     """
     # Mask input_ids for masked tokens
-    input_ids[attention_mask == 0] = IGNORE_INDEX
+    input_ids_copy = input_ids.clone()
+    input_ids_copy[attention_mask == 0] = IGNORE_INDEX
 
     # Prepare labels
-    labels = input_ids.clone()
-    labels[:, :-1] = input_ids[:, 1:]
+    labels = input_ids_copy.clone()
+    labels[:, :-1] = input_ids_copy[:, 1:]
     labels[:, -1] = IGNORE_INDEX
 
     # Reshape logits and labels

@@ -16,9 +16,9 @@ import lib.serialize_human
 
 @dataclass
 class DataMMLUConfig:
-    dataset: str = "lukaemon/mmlu"
+    dataset: str = "cais/mmlu"
     model_checkpoint: str = "meta-llama/Llama-2-7b-hf"
-    max_len: int = 256
+    max_len: int = 1024
     dataset_split: str = "train"
     num_samples: int = None
     subset_names: List[str] = field(default_factory=lambda: [
@@ -94,9 +94,19 @@ class DataMMLU(Dataset):
         subset_datasets = []
 
         # Iterate over each subset name and load the dataset for that subset
-        for subset_name in self.data_config.subset_names: 
-            sub_dataset = load_dataset(self.data_config.dataset, subset_name)[data_config.dataset_split]
-            subset_datasets.append(sub_dataset)
+        if data_config.dataset_split =="train":
+            for subset_name in self.data_config.subset_names: 
+                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['dev']
+                subset_datasets.append(sub_dataset)
+                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['validation']
+                subset_datasets.append(sub_dataset)
+        elif data_config.dataset_split =="validation":
+            for subset_name in self.data_config.subset_names: 
+                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['test']
+                subset_datasets.append(sub_dataset)
+        else:
+            raise ValueError(f"Invalid dataset split: {data_config.dataset_split}. Expected 'train' or 'validation'.")
+        
 
         # Concatenate all subsets into a single dataset
         self.dataset = concatenate_datasets(subset_datasets)
@@ -124,15 +134,7 @@ class DataMMLU(Dataset):
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Tokenize the dataset
-        col_to_delete = [
-            "input",
-            "A",
-            "B",
-            "C",
-            "D",
-            "target",
-            "formatted_question_answer",
-        ]
+        col_to_delete = ['question', 'subject', 'choices', 'answer', "formatted_question_answer"]
         self.tokenized_dataset = formatted_dataset.map(
             self._preprocess, batched=True, remove_columns=col_to_delete
         )
@@ -142,6 +144,20 @@ class DataMMLU(Dataset):
 
         self.max_token_size = self._find_max_input_size(self.tokenized_dataset)
         print("Max token size of question: ", self.max_token_size)
+
+        # Debugging prints
+        self._print_debug_info(formatted_dataset)
+
+    def _print_debug_info(self, formatted_dataset):
+        """Prints debug information."""
+        print("Max token size of input sample: ", self.max_token_size)
+        print("a: ",  self.tokenizer.encode("A: (a)."))
+        print("b: ",  self.tokenizer.encode("A: (b)."))
+        print("c: ",  self.tokenizer.encode("A: (c)."))
+        print("d: ",  self.tokenizer.encode("A: (d)."))
+        print("e: ",  self.tokenizer.encode("A: (e)."))
+        print("Decode: ",  self.tokenizer.decode([29890, 29872, 29890, 29883, 29874, 29881, 29883, 29872]))
+        print(formatted_dataset[0])
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0
@@ -167,15 +183,17 @@ class DataMMLU(Dataset):
 
     def _format_question_answer(self, item):
         # Construct the question part
-        question = f"Q: {item['input']}\nAnswer Choices:\n"
+        question = f"Q: {item['question']}\nAnswer Choices:\n"
         
         # Append each option
         options = ['A', 'B', 'C', 'D']
-        for option in options:
-            question += f"({option.lower()}) {item[option]}\n"
+        for index_option, option in enumerate(options):
+            question += f"({option.lower()}) {item['choices'][index_option]}\n"
         
         # Append the answer
-        answer = f"A: ({item['target'].lower()})."
+        answer_number = int(item['answer'])
+        answer_letter = options[answer_number].lower()
+        answer = f"A: ({answer_letter})."
         
         # Return a dictionary with the formatted question-answer pair
         return {"formatted_question_answer": question + answer}
