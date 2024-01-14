@@ -20,7 +20,7 @@ def generative_loss(logits: Tensor, input_ids: Tensor, attention_mask: Tensor) -
     """
     if not all(x.dim() == 2 for x in [input_ids, attention_mask]) or logits.dim() != 3:
         raise ValueError("Input tensors must have the correct shape.")
-
+    
     input_ids_masked = input_ids.masked_fill(attention_mask == 0, IGNORE_INDEX)
     labels = input_ids_masked.roll(-1, dims=1)
     labels[:, -1] = IGNORE_INDEX

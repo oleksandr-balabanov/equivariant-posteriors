@@ -58,13 +58,13 @@ def create_config(
         ),
         train_data_config=DataCommonsenseQaConfig(
             dataset="commonsense_qa",
-            model_checkpoint=LLaMA_CHECKPOINT,
+            model_checkpoint=checkpoint,
             max_len=128,
             dataset_split="train",
         ),
         val_data_config=DataCommonsenseQaConfig(
             dataset="commonsense_qa",
-            model_checkpoint=LLaMA_CHECKPOINT,
+            model_checkpoint=checkpoint,
             max_len=128,
             dataset_split="validation",
         ),

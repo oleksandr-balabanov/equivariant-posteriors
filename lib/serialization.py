@@ -92,8 +92,8 @@ def serialize(config: SerializeConfig):
         )
         torch.save(model, f"{model_epoch_checkpoint}_tmp")
         shutil.move(
-            checkpoint_path / f"{model_epoch_checkpoint}_tmp",
-            checkpoint_path / model_epoch_checkpoint,
+            f"{model_epoch_checkpoint}_tmp",
+            model_epoch_checkpoint,
         )
     for key, value in file_data.__dict__.items():
         torch.save(value, checkpoint_path / f"{key}_tmp")
