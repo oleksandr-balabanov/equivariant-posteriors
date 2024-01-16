@@ -26,3 +26,5 @@ rust/vis/target
 rust/vis/flamegraph.svg
 rust/vis/perf.data
 rust/vis/perf.data.old
+ens_llm_lora_evaluate
+experiments/lora_ensembles/test_code

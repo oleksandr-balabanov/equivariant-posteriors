@@ -1,7 +1,6 @@
 import os
 import time
 from typing import Callable, List, Tuple
-from dataclasses import dataclass
 from pathlib import Path
 import filelock
 import torch

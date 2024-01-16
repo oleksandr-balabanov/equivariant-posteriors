@@ -1,5 +1,0 @@
-sh ~/bin/srun_large
-sh bash_singularity.sh
-source experiments/lora_ensembles/hf_env.sh
-sh run.sh experiments/lora_ensembles/lora_ens_train.py
-sh run.sh experiments/lora_ensembles/lora_ens_evaluate.py

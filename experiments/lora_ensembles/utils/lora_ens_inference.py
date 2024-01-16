@@ -69,9 +69,11 @@ class LORAEnsemble:
         return outputs
 
 
-def create_lora_ensemble(member_configs: List[TrainRun], device_id):
+def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_epochs = None):
     state_dicts = []
     for member_config in member_configs:
+        if checkpoint_epochs:
+            member_config.epochs = checkpoint_epochs
         deserialized_state_dict = deserialize_model_state_dict(
             DeserializeConfig(train_run=member_config, device_id=device_id)
         )
