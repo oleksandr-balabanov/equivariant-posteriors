@@ -116,6 +116,7 @@ def calculate_answer_indices(attention_mask: Tensor, target_token_position: int)
     if attention_mask.dim() != 2:
         raise ValueError("Attention mask must be a 2D tensor.")
 
+
     zero_mask = attention_mask == 0
     int_zero_mask = zero_mask.int()
     first_zero_indices = int_zero_mask.argmax(dim=1, keepdim=True)

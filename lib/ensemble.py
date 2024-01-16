@@ -23,10 +23,10 @@ from lib.train_dataclasses import EnsembleConfig
 
 
 def create_ensemble_config(
-    create_member_config: Callable[[int], TrainRun], n_members: int
+    create_member_config: Callable[[int], TrainRun], n_members: int, **kwargs
 ):
     return EnsembleConfig(
-        members=[create_member_config(member_id) for member_id in range(n_members)]
+        members=[create_member_config(member_id, **kwargs) for member_id in range(n_members)]
     )
 
 

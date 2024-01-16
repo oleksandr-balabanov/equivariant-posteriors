@@ -1,14 +1,15 @@
 from typing import List, Dict, Callable, Tuple
-from torch.utils.data import DataLoader
-import torchmetrics as tm
+import lib.data_factory as data_factory
+
+
 import torch
+import torchmetrics as tm
 import torch.nn.functional as F
-from lib.ddp import ddp_setup
-from experiments.lora_ensembles.lora_ens_metrics import create_metric_sample_single_token
-from lib.ensemble import create_ensemble_config
-from lib.data_registry import DataCommonsenseQaConfig, DataCommonsenseQa
-from experiments.lora_ensembles.lora_ens_inference import create_lora_ensemble, LORAEnsemble
-from experiments.lora_ensembles.lora_ens_train import create_config, LLaMA_CHECKPOINT, MISTRAL_CHECKPOINT
+from torch.utils.data import DataLoader
+
+from experiments.lora_ensembles.utils.lora_ens_metrics import create_metric_sample_single_token
+from experiments.lora_ensembles.utils.lora_ens_inference import LORAEnsemble
+from experiments.lora_ensembles.utils.lora_ens_file_operations import save_to_dill, load_from_dill
 
 IGNORE_INDEX = -100
 
@@ -75,22 +76,24 @@ def calculate_targets_ensemble(
     return targets_ensemble
 
 def calculate_ens_softmax_probs_and_targets(
+    eval_dataset_config, 
     lora_ensemble: LORAEnsemble, 
-    eval_dataset: torch.utils.data.Dataset, 
-    device: torch.device
+    device: torch.device,
+    save_file_path:str = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Calculates ensemble softmax probabilities and targets for the evaluation dataset.
 
     Args:
         lora_ensemble (LORAEnsemble): The ensemble of LoRA models.
-        eval_dataset (torch.utils.data.Dataset): The dataset for evaluation.
+        eval_dataset_config: The dataset config for evaluation.
         device (torch.device): The device to perform calculations on.
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: Ensemble softmax probabilities and corresponding targets.
     """
-    lora_ensemble.model.train()
+    lora_ensemble.model.train()    
+    eval_dataset = data_factory.get_factory().create(eval_dataset_config)
     eval_loader = DataLoader(eval_dataset, batch_size=5)
     accumulated_targets = []
     accumulated_ens_probs = []
@@ -116,6 +119,13 @@ def calculate_ens_softmax_probs_and_targets(
 
     final_targets = torch.cat(accumulated_targets)
     final_ens_softmax_probs = torch.cat(accumulated_ens_probs, dim=1)
+
+    if save_file_path:
+        res_dic = {
+           "targets": final_targets,
+           "ens_softmax_probs": final_ens_softmax_probs,
+        }
+        save_to_dill(res_dic, save_file_path)
 
     return final_ens_softmax_probs, final_targets
 
@@ -165,7 +175,7 @@ def calculate_generative_loss_ens(
 
     # Calculate loss
     loss = F.nll_loss(log_probs, ens_targets, reduction='mean', ignore_index=IGNORE_INDEX)
-    return loss
+    return loss.item()
 
 def calculate_ce_over_ens(
     ens_softmax_probs: torch.Tensor, 
@@ -190,7 +200,7 @@ def calculate_ce_over_ens(
         n_bins=10,
         num_classes=num_classes,
         task="multiclass",
-    )
+    ).item()
 
 def calculate_roc_auc_score(
     y_true: torch.Tensor, 
@@ -271,7 +281,7 @@ def calculate_max_average_probs(
     return max_mean_softmax_probs
 
 def calculate_entropy(
-    softmax_probs: torch.Tensor, 
+    softmax_probs_ensemble: torch.Tensor, 
     dim: int = -1, 
     eps: float = 1e-9
 ) -> torch.Tensor:
@@ -279,13 +289,14 @@ def calculate_entropy(
     Calculate entropy of softmax probabilities.
 
     Args:
-        softmax_probs (torch.Tensor): Softmax probabilities.
+        softmax_probs_ensemble (torch.Tensor): Softmax probabilities.
         dim (int): Dimension over which to calculate entropy. Defaults to -1.
         eps (float): Small value to prevent log(0). Defaults to 1e-9.
 
     Returns:
         torch.Tensor: Entropy of softmax probabilities.
     """
+    softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
     entropy = -torch.sum(softmax_probs * torch.log(softmax_probs + eps), dim=dim)
 
     return entropy
@@ -302,9 +313,8 @@ def calculate_mutual_information(
     Returns:
         torch.Tensor: Mutual information.
     """
-    mean_softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
-    entropy_of_the_mean_ens_prob = calculate_entropy(mean_softmax_probs)
-    mean_ens_entropy = torch.mean(calculate_entropy(softmax_probs_ensemble), dim=0)
+    entropy_of_the_mean_ens_prob = calculate_entropy(softmax_probs_ensemble)
+    mean_ens_entropy = torch.mean(calculate_entropy(softmax_probs_ensemble.unsqueeze(0)), dim=0)
     
     mutual_information = entropy_of_the_mean_ens_prob - mean_ens_entropy
 
@@ -312,30 +322,50 @@ def calculate_mutual_information(
 
 
 def evaluate_lora_ens_on_dataset(
-    lora_ensemble: LORAEnsemble, 
-    dataset: torch.utils.data.Dataset, 
+    dataset_config,
+    lora_ensemble: LORAEnsemble,  
     device: torch.device, 
-    ood_score_creator: Callable = calculate_mutual_information
+    save_file_path: str = None,
 ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Evaluate the LORA ensemble on a single dataset to calculate accuracy, loss, and calibration error.
 
     Args:
         lora_ensemble (LORAEnsemble): The ensemble of LoRA models.
-        dataset (torch.utils.data.Dataset): The dataset to evaluate on.
+        dataset config: The dataset config to evaluate on.
         device (torch.device): The device to perform calculations on.
-        ood_score_creator (Callable, optional): Function to calculate out-of-distribution score. Defaults to calculate_mutual_information.
-
+        
     Returns:
         Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]: Accuracy, loss, calibration error, and OOD scores.
     """
-    ens_probs, targets = calculate_ens_softmax_probs_and_targets(lora_ensemble, dataset, device)
+    try:
+        # load from file
+        "Loading the ens softmax probabilitiess..."
+        res = load_from_dill(save_file_path)
+        ens_probs = res["ens_softmax_probs"]
+        targets = res["targets"]
+        "Loading is complete."
+    except:
+        # if fail then calculate and save
+        "Loading is not complete: Calculating the ens softmax probabilities from scratch..."
+        ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, lora_ensemble, device, save_file_path)
+        "Calculation is complete."
+
+    # calculate the metrics
     accuracy = calculate_accuracy_over_ens(ens_probs, targets)
     loss = calculate_generative_loss_ens(ens_probs, targets)
     ce = calculate_ce_over_ens(ens_probs, targets)
-    ood_scores = ood_score_creator(ens_probs)
 
-    print_single_dataset_results(dataset.data_config.dataset, accuracy, loss, ce)
+    ood_scores_max_probs = calculate_max_average_probs(ens_probs)
+    ood_scores_entropy = calculate_entropy(ens_probs)
+    ood_scores_mi = calculate_mutual_information(ens_probs)
+    ood_scores = {
+        "ood_scores_max_probs":ood_scores_max_probs,
+        "ood_scores_entropy":ood_scores_entropy,
+        "ood_scores_mi":ood_scores_mi
+    }
+
+    print_single_dataset_results(dataset_config.dataset, accuracy, loss, ce)
 
     return accuracy, loss, ce, ood_scores
 
@@ -360,10 +390,12 @@ def print_single_dataset_results(
     print(f"Calibration Error: {calibration_error:.4f}")
 
 def evaluate_lora_ens_on_two_datasets_and_ood(
+    dataset_1_config, 
+    dataset_2_config, 
     lora_ensemble: LORAEnsemble, 
-    dataset_one: torch.utils.data.Dataset, 
-    dataset_two: torch.utils.data.Dataset, 
-    device: torch.device
+    device: torch.device,
+    save_file_path_1: str = None,
+    save_file_path_2: str = None,
 ) -> Dict[str, float]:
     """
     Evaluate the LORA ensemble on two distinct datasets and calculate Out-Of-Distribution (OOD) performance.
@@ -372,26 +404,32 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
 
     Args:
         lora_ensemble (LORAEnsemble): The ensemble of LoRA models.
-        dataset_one (torch.utils.data.Dataset): The first dataset for evaluation.
-        dataset_two (torch.utils.data.Dataset): The second dataset for evaluation.
+        dataset_1_config: The first dataset config for evaluation.
+        dataset_2_config: The second dataset config for evaluation.
         device (torch.device): The device on which computations will be performed.
 
     Returns:
         Dict[str, float]: A dictionary containing accuracy ('acc_one', 'acc_two'), 
         loss ('loss_one', 'loss_two'), calibration error ('ce_one', 'ce_two') for each dataset, 
-        and the OOD score ('ood_score') between them.
+        and the OOD scores ('ood_score') between them.
     """
     
     # Evaluate on the first dataset
-    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(lora_ensemble, dataset_one, device)
+    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, lora_ensemble, device, save_file_path=save_file_path_1)
 
     # Evaluate on the second dataset
-    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(lora_ensemble, dataset_two, device)
+    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, lora_ensemble, device, save_file_path=save_file_path_2)
 
     # Calculate OOD performance
-    ood_score = calculate_ood_performance_auroc(ood_scores_one, ood_scores_two)
-
-    print_single_dataset_odd(ood_score, dataset_one.data_config.dataset, dataset_two.data_config.dataset)
+    ood_score_max_probs = calculate_ood_performance_auroc(ood_scores_one["ood_scores_max_probs"], ood_scores_two["ood_scores_max_probs"])
+    ood_score_entropy = calculate_ood_performance_auroc(ood_scores_one["ood_scores_entropy"], ood_scores_two["ood_scores_entropy"])
+    ood_score_mi = calculate_ood_performance_auroc(ood_scores_one["ood_scores_mi"], ood_scores_two["ood_scores_mi"])
+    ood_score = {
+        "ood_score_max_probs":ood_score_max_probs,
+        "ood_score_entropy":ood_score_entropy,
+        "ood_score_mi":ood_score_mi,
+    }
+    print_odd(ood_score, dataset_1_config.dataset, dataset_2_config.dataset)
 
     return {
         "acc_one": acc_one, 
@@ -403,8 +441,8 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
         "ood_score": ood_score
     }
 
-def print_single_dataset_odd(
-    ood_score: float, 
+def print_odd(
+    ood_score: Dict, 
     in_domain_dataset_name: str, 
     out_of_domain_dataset_name: str
 ):
@@ -416,59 +454,11 @@ def print_single_dataset_odd(
         in_domain_dataset_name (str): Name of the in-domain dataset.
         out_of_domain_dataset_name (str): Name of the out-of-domain dataset.
     """
-    print(f"OOD AUROC Score for in domain {in_domain_dataset_name}/out-of-domain {out_of_domain_dataset_name}: {ood_score:.4f}")
+    for ood_key in ood_score.keys():
+        print(f"OOD AUROC Score for {ood_key} and for in domain {in_domain_dataset_name}/out-of-domain {out_of_domain_dataset_name}: {ood_score[ood_key]:.4f}")
 
 
-def create_inference_config(ensemble_id: int) -> dict:
-    """
-    Create the configuration for inference.
 
-    Args:
-        ensemble_id (int): Identifier for the ensemble.
 
-    Returns:
-        dict: Configuration for the inference.
-    """
-    config = create_config(ensemble_id)
-    config.compute_config.distributed = False
-    config.compute_config.num_gpus = 1
-    return config
 
-def main():
-    """
-    Main function to evaluate the LORA ensemble on two datasets and calculate OOD performance.
-    """
-    try:
-        device = ddp_setup()
-        ensemble_config = create_ensemble_config(create_inference_config, 1)
-        lora_ensemble = create_lora_ensemble(ensemble_config.members, device)
-
-        # Evaluate on in-domain dataset
-        in_domain_dataset_config = DataCommonsenseQaConfig(
-            dataset="commonsense_qa",
-            model_checkpoint=MISTRAL_CHECKPOINT,
-            max_len=150,
-            dataset_split="validation",
-        )
-        in_domain_dataset = DataCommonsenseQa(in_domain_dataset_config)
-
-        # Evaluate on out-of-domain dataset
-        out_of_domain_dataset_config = DataCommonsenseQaConfig(
-            dataset="commonsense_qa",
-            model_checkpoint=MISTRAL_CHECKPOINT,
-            max_len=150,
-            dataset_split="validation",
-            num_samples = 2,
-        )
-        out_of_dataset = DataCommonsenseQa(out_of_domain_dataset_config)
-
-        results = evaluate_lora_ens_on_two_datasets_and_ood(
-            lora_ensemble, in_domain_dataset, out_of_dataset, device
-        )
-
-        print(results)
-    except Exception as e:
-        print(f"An error occurred in main: {e}")
-
-if __name__ == "__main__":
-    main()
+   

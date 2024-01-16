@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from typing import Dict, Callable
 from torch import Tensor
 
-from experiments.lora_ensembles.generative_llm_losses import (
+from experiments.lora_ensembles.utils.generative_llm_losses import (
     create_single_token_attention_mask
 )
 

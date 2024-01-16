@@ -166,7 +166,7 @@ class TrainRun:
 
 @dataclass
 class EnsembleConfig:
-    members: list[TrainRun]
+    members: List[TrainRun]
 
     def serialize_human(self):
         return [member_config.serialize_human() for member_config in self.members]
@@ -174,6 +174,6 @@ class EnsembleConfig:
 
 @dataclass
 class Ensemble:
-    member_configs: list[TrainRun]
-    members: list[torch.nn.Module]
+    member_configs: List[TrainRun]
+    members: List[torch.nn.Module]
     n_members: int
