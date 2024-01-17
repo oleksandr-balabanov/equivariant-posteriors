@@ -8,10 +8,25 @@ from experiments.lora_ensembles.utils.lora_ens_file_naming import (
 from experiments.lora_ensembles.plot.lora_ens_plot_config import (
     create_lora_ens_plot_config
 )
+from experiments.lora_ensembles.plot.lora_ens_plot_const_configs import (
+    PLOT_ENS_PARAMS_ENTIRE, 
+    PLOT_ENS_PARAMS_REGULARL2,
+    PLOT_ENS_PARAMS_LORAL2,
+    PLOT_ENS_PARAMS_LORAL2_DR0D1,
+    PLOT_ENS_PARAMS_BEST_N_1
+)
 from experiments.lora_ensembles.plot.lora_ens_plot_utils import (
     load_metrics_from_files,
     plot_and_save,
 )
+
+
+def update_config(config, params):
+    for param, value in params.items():
+        if hasattr(config, param):
+            setattr(config, param, value)
+        else:
+            print(f"Parameter {param} not found in LoraEnsTrainConfig")
 
 def main():
     """
@@ -24,8 +39,18 @@ def main():
     # plot config         
     lora_ens_plot_config = create_lora_ens_plot_config()
 
-    # load metric values
-    multiple_results["lora ens 1"]  = load_metrics_from_files(lora_ens_plot_config, metric_name)
+    # plot params
+    plot_ens_params = PLOT_ENS_PARAMS_BEST_N_1
+    for plot_ens_name in plot_ens_params.keys():
+        
+        # load params
+        one_ens_params = plot_ens_params[plot_ens_name]
+        lora_ens_train_config = lora_ens_plot_config.lora_ens_train_config
+        update_config(lora_ens_train_config, one_ens_params)
+        lora_ens_plot_config.lora_ens_train_config = lora_ens_train_config
+        
+        # load metric values
+        multiple_results[plot_ens_name]  = load_metrics_from_files(lora_ens_plot_config, metric_name)
 
     # plot and save to file
     save_results_dir = create_results_dir(lora_ens_plot_config)

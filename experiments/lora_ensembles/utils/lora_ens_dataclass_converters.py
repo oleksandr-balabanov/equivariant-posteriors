@@ -14,7 +14,7 @@ def convert_eval_config_to_plot_config(eval_config: LoraEnsEvalConfig) -> LoraEn
         eval_dataset_2_config=eval_config.eval_dataset_2_config,
         eval_dir_name=eval_config.eval_dir_name,
         load_softmax_probs=eval_config.load_softmax_probs,
-        lora_ens_train_config=eval_config.lora_ens_train_config  # Assuming direct compatibility
+        lora_ens_train_config=eval_config.lora_ens_train_config  
     )
 
 def convert_plot_config_to_eval_config(plot_config: LoraEnsPlotConfig) -> LoraEnsEvalConfig:
@@ -30,5 +30,5 @@ def convert_plot_config_to_eval_config(plot_config: LoraEnsPlotConfig) -> LoraEn
         eval_dataset_2_config=plot_config.eval_dataset_2_config,
         eval_dir_name=plot_config.eval_dir_name,
         load_softmax_probs=plot_config.load_softmax_probs,
-        lora_ens_train_config=plot_config.lora_ens_train_config  # Assuming direct compatibility
+        lora_ens_train_config=plot_config.lora_ens_train_config  
     )
