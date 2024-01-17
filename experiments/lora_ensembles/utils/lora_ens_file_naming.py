@@ -1,5 +1,6 @@
 import os
 from experiments.lora_ensembles.eval.lora_ens_evaluate_config_dataclass import LoraEnsEvalConfig
+from experiments.lora_ensembles.plot.lora_ens_plot_config_dataclass import LoraEnsPlotConfig
 
 def create_results_dir(lora_ens_eval_config:LoraEnsEvalConfig):
 
@@ -75,24 +76,18 @@ def create_save_ens_probs_and_targets_file_name(lora_ens_eval_config:LoraEnsEval
     return file_name
 
 
-def create_save_metric_image_file_name(lora_ens_eval_config:LoraEnsEvalConfig, metric_name):
+def create_save_metric_image_file_name(lora_ens_plot_config:LoraEnsPlotConfig, metric_name):
 
-    # train config
-    lora_ens_train_config = lora_ens_eval_config.lora_ens_train_config
-    
-    # file name
-    file_name = f"ens_{metric_name}_"
+    lora_ens_train_config = lora_ens_plot_config.lora_ens_train_config
+    file_name = metric_name + "_" + lora_ens_plot_config.img_save_file_name
     file_name += extract_model_name_from_checkpoint(lora_ens_train_config.checkpoint)
-    file_name += f"_n_{lora_ens_eval_config.n_members}"
-    file_name += f"_ep_{lora_ens_eval_config.min_train_epochs}_{lora_ens_eval_config.max_train_epochs}"
+    file_name += f"_n_{lora_ens_plot_config.n_members}"
     file_name += f"_lr_{lora_ens_train_config.lora_rank}"
-    file_name += f"_dr_{lora_ens_train_config.lora_dropout}"
-    file_name += f"_rl2_{lora_ens_train_config.regular_l2}"
-    file_name += f"_rl2_{lora_ens_train_config.lora_l2}"
-
-    # Replacing all '.' with 'd' and add extension ".png"
+    file_name += f"_eps_{lora_ens_plot_config.min_train_epochs}_{lora_ens_plot_config.max_train_epochs}"
+    
+    # Replacing all '.' with 'd' and add extension ".dill"
     file_name = file_name.replace(".", "d")+".png"
-
+    
     return file_name
 
 

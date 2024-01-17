@@ -15,17 +15,18 @@ from experiments.lora_ensembles.utils.lora_ens_dataclass_converters import (
 )
 
 def plot_and_save(multiple_results, file_path, metric_name):
+    plt.figure()
     for ens_name in multiple_results.keys():
         ens_res = multiple_results[ens_name]
         x_axis = ens_res["epoch_values"]
         y_axis = ens_res["metric_values"]
 
-        plt.figure()
-        plt.plot(x_axis, y_axis, label=ens_name, color='black')
+        plt.plot(x_axis, y_axis, label=ens_name)
     
     plt.xlabel("Epoch Values")
     plt.xlabel("Metric Values")
-    
+    plt.legend()
+
     plt.title(metric_name)
     plt.savefig(file_path)
     plt.close()
