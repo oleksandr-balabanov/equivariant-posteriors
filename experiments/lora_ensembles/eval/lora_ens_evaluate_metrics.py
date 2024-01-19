@@ -94,7 +94,7 @@ def calculate_ens_softmax_probs_and_targets(
     """
     lora_ensemble.model.train()    
     eval_dataset = data_factory.get_factory().create(eval_dataset_config)
-    eval_loader = DataLoader(eval_dataset, batch_size=5)
+    eval_loader = DataLoader(eval_dataset, batch_size=eval_dataset_config.eval_batch_size)
     accumulated_targets = []
     accumulated_ens_probs = []
 
