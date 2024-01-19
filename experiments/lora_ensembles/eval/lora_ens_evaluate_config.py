@@ -1,7 +1,6 @@
 from experiments.lora_ensembles.eval.lora_ens_evaluate_config_dataclass import LoraEnsEvalConfig
 from experiments.lora_ensembles.train.lora_ens_train_config_dataclass import LoraEnsTrainConfig
 from experiments.lora_ensembles.train.lora_ens_train_config import create_lora_ens_train_run_config
-from lib.data_registry import DataCommonsenseQaConfig
 
 def create_lora_ens_eval_config():
  

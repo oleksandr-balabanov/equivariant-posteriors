@@ -100,7 +100,7 @@ class DataMMLU(Dataset):
                     sub_dataset = load_dataset(self.data_config.dataset, subset_name)[dataset_split]
                     subset_datasets.append(sub_dataset)
                 except:
-                    raise ValueError(f"Invalid dataset split: {dataset_split}. Expected 'train' or 'validation'.")
+                    raise ValueError(f"Invalid dataset split: {dataset_split}. Expected 'dev', 'validation' or 'test'.")
             
 
         # Concatenate all subsets into a single dataset

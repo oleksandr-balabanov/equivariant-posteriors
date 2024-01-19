@@ -11,7 +11,7 @@ def commonsense_qa_config(checkpoint, max_len_train, max_len_val, dataset_split)
     )
 
 def mmlu_config(checkpoint, max_len_train, max_len_val, dataset_split, subset_names):
-    train_dataset_split = ["dev", "val"]
+    train_dataset_split = ["dev", "validation"]
     val_dataset_split = ["test"]
     return DataMMLUConfig(
         dataset="cais/mmlu",
@@ -27,7 +27,7 @@ def create_dataset_config_factory(dataset: str):
         "mmlu_ss": lambda checkpoint, max_len_train, max_len_val, dataset_split: mmlu_config(
             checkpoint, max_len_train, max_len_val, dataset_split, subset_names=MMLU_SS_SUBSETS
         ),
-        "mmlu_step": lambda checkpoint, max_len_train, max_len_val, dataset_split: mmlu_config(
+        "mmlu_stem": lambda checkpoint, max_len_train, max_len_val, dataset_split: mmlu_config(
             checkpoint, max_len_train, max_len_val, dataset_split, subset_names=MMLU_STEM_SUBSETS
         ),
     }
