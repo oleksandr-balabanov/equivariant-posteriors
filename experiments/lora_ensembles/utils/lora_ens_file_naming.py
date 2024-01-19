@@ -1,4 +1,5 @@
 import os
+from typing import Union
 from experiments.lora_ensembles.eval.lora_ens_evaluate_config_dataclass import LoraEnsEvalConfig
 from experiments.lora_ensembles.plot.lora_ens_plot_config_dataclass import LoraEnsPlotConfig
 
@@ -10,8 +11,8 @@ def create_results_dir(lora_ens_eval_config:LoraEnsEvalConfig):
     dir1_name = lora_ens_eval_config.eval_dir_name
     dir2_name = "train_"+lora_ens_train_config.train_dataset
     dir3_name = "ens_"+str(lora_ens_eval_config.n_members)
-    dir4_name = "eval1_"+lora_ens_eval_config.eval_dataset_1_config.dataset
-    dir5_name = "eval2_"+lora_ens_eval_config.eval_dataset_2_config.dataset
+    dir4_name = "eval1_"+lora_ens_eval_config.eval_dataset_1
+    dir5_name = "eval2_"+lora_ens_eval_config.eval_dataset_2
 
     dir_path = os.path.join(dir1_name, dir2_name, dir3_name, dir4_name+"_"+dir5_name)
     os.makedirs(dir_path, exist_ok=True)
@@ -37,7 +38,9 @@ def extract_model_name_from_checkpoint(checkpoint):
         model_name = checkpoint[last_slash_index + 1:]
     return model_name
 
-def create_save_metrics_file_name(lora_ens_eval_config:LoraEnsEvalConfig):
+
+
+def create_save_metrics_file_name(lora_ens_eval_config:Union[LoraEnsEvalConfig, LoraEnsPlotConfig]):
 
     # train config
     lora_ens_train_config = lora_ens_eval_config.lora_ens_train_config

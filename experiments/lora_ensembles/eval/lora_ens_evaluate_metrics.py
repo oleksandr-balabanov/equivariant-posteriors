@@ -146,6 +146,7 @@ def calculate_accuracy_over_ens(
     mean_softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
     predicted_labels = torch.argmax(mean_softmax_probs, dim=-1)
     correct_predictions = torch.sum(predicted_labels == final_targets)
+    print(predicted_labels)
     accuracy = correct_predictions.item() / len(final_targets)
 
     return accuracy

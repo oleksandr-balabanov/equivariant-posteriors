@@ -15,6 +15,9 @@ from experiments.lora_ensembles.utils.lora_ens_inference import (
 from experiments.lora_ensembles.eval.lora_ens_evaluate_metrics import ( 
     evaluate_lora_ens_on_two_datasets_and_ood, 
 )
+from experiments.lora_ensembles.datasets.dataset_utils import (
+    create_eval_dataset_config
+)
 from experiments.lora_ensembles.utils.lora_ens_file_naming import (
     create_results_dir,
     create_results_dir_per_epoch,
@@ -34,8 +37,8 @@ def main():
 
     # eval config
     lora_ens_eval_config = create_lora_ens_eval_config()
-    eval_dataset_1_config = lora_ens_eval_config.eval_dataset_1_config
-    eval_dataset_2_config = lora_ens_eval_config.eval_dataset_2_config
+    eval_dataset_1_config = create_eval_dataset_config(lora_ens_eval_config, lora_ens_eval_config.eval_dataset_1)
+    eval_dataset_2_config = create_eval_dataset_config(lora_ens_eval_config, lora_ens_eval_config.eval_dataset_2)
 
     # configure inference config function  
     create_inference_config = create_lora_ens_inference_config_factory(

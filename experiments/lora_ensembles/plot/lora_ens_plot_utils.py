@@ -9,10 +9,7 @@ from experiments.lora_ensembles.utils.lora_ens_file_naming import (
 from experiments.lora_ensembles.utils.lora_ens_file_operations import (
     save_to_dill, load_from_dill
 )
-
-from experiments.lora_ensembles.utils.lora_ens_dataclass_converters import (
-    convert_plot_config_to_eval_config
-)
+from experiments.lora_ensembles.plot.lora_ens_plot_config_dataclass import LoraEnsPlotConfig
 
 def plot_and_save(multiple_results, file_path, metric_name):
     plt.figure()
@@ -47,7 +44,7 @@ def flatten_result_dic(res_dict):
 
     return flattened_dict
 
-def load_metrics_from_files(lora_ens_plot_config, metric_name):
+def load_metrics_from_files(lora_ens_plot_config:LoraEnsPlotConfig, metric_name:str):
     
     save_results_dir = create_results_dir(lora_ens_plot_config)
     metric_values = []
@@ -57,8 +54,7 @@ def load_metrics_from_files(lora_ens_plot_config, metric_name):
         save_results_dir_per_epoch = create_results_dir_per_epoch(save_results_dir, train_epochs)
 
         # save to file
-        lora_ens_eval_config = convert_plot_config_to_eval_config(lora_ens_plot_config)
-        file_name = create_save_metrics_file_name(lora_ens_eval_config)
+        file_name = create_save_metrics_file_name(lora_ens_plot_config)
         file_path =  os.path.join(save_results_dir_per_epoch, file_name)
         eval_res = load_from_dill(file_path = file_path)
         ens_result_per_epoch = eval_res["ens_result_per_epoch"]

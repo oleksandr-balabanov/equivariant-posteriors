@@ -77,20 +77,21 @@ class DataCommonsenseQa(Dataset):
 
     def _print_debug_info(self, formatted_dataset):
         """Prints debug information."""
-        print("Max token size of input sample: ", self.max_token_size)
         print("a: ",  self.tokenizer.encode("A: (a)."))
         print("b: ",  self.tokenizer.encode("A: (b)."))
         print("c: ",  self.tokenizer.encode("A: (c)."))
         print("d: ",  self.tokenizer.encode("A: (d)."))
         print("e: ",  self.tokenizer.encode("A: (e)."))
-        print(formatted_dataset[0])
+        print("One Formated Question: ", formatted_dataset[0])
+        print("One Tokenized Question: ", next(iter(self.tokenized_dataset)))
+        print("Max token size: ", self.max_token_size)
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0
         for row in tokenized_dataset:
             attention_mask = torch.tensor(row[attention_mask_column]) if not isinstance(row[attention_mask_column], torch.Tensor) else row[attention_mask_column]
-            zero_indices = (attention_mask == 0).nonzero(as_tuple=True)[0]
-            size = zero_indices[0].item() if len(zero_indices) > 0 else len(attention_mask)
+            one_indices = (attention_mask == 1).nonzero(as_tuple=True)[0]
+            size = self.data_config.max_len-one_indices[0].item()
             max_size = max(max_size, size)
         return max_size
 
