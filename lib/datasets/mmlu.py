@@ -19,7 +19,7 @@ class DataMMLUConfig:
     dataset: str = "cais/mmlu"
     model_checkpoint: str = "meta-llama/Llama-2-7b-hf"
     max_len: int = 1024
-    dataset_split: str = "train"
+    dataset_split: List[str] = field(default_factory=lambda: ["dev"])
     num_samples: int = None
     subset_names: List[str] = field(default_factory=lambda: [
         'high_school_european_history', 
@@ -94,19 +94,14 @@ class DataMMLU(Dataset):
         subset_datasets = []
 
         # Iterate over each subset name and load the dataset for that subset
-        if data_config.dataset_split =="train":
+        for dataset_split in  data_config.dataset_split:
             for subset_name in self.data_config.subset_names: 
-                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['dev']
-                subset_datasets.append(sub_dataset)
-                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['validation']
-                subset_datasets.append(sub_dataset)
-        elif data_config.dataset_split =="validation":
-            for subset_name in self.data_config.subset_names: 
-                sub_dataset = load_dataset(self.data_config.dataset, subset_name)['test']
-                subset_datasets.append(sub_dataset)
-        else:
-            raise ValueError(f"Invalid dataset split: {data_config.dataset_split}. Expected 'train' or 'validation'.")
-        
+                try:
+                    sub_dataset = load_dataset(self.data_config.dataset, subset_name)[dataset_split]
+                    subset_datasets.append(sub_dataset)
+                except:
+                    raise ValueError(f"Invalid dataset split: {dataset_split}. Expected 'train' or 'validation'.")
+            
 
         # Concatenate all subsets into a single dataset
         self.dataset = concatenate_datasets(subset_datasets)
@@ -141,44 +136,28 @@ class DataMMLU(Dataset):
 
         self.tokenized_dataset.set_format("torch")
         self.collate_fn = transformers.DataCollatorWithPadding(tokenizer=self.tokenizer)
-
         self.max_token_size = self._find_max_input_size(self.tokenized_dataset)
-        print("Max token size of question: ", self.max_token_size)
 
         # Debugging prints
         self._print_debug_info(formatted_dataset)
 
     def _print_debug_info(self, formatted_dataset):
         """Prints debug information."""
-        print("Max token size of input sample: ", self.max_token_size)
         print("a: ",  self.tokenizer.encode("A: (a)."))
         print("b: ",  self.tokenizer.encode("A: (b)."))
         print("c: ",  self.tokenizer.encode("A: (c)."))
         print("d: ",  self.tokenizer.encode("A: (d)."))
-        print("e: ",  self.tokenizer.encode("A: (e)."))
-        print("Decode: ",  self.tokenizer.decode([29890, 29872, 29890, 29883, 29874, 29881, 29883, 29872]))
-        print(formatted_dataset[0])
+        print("One Formated Question: ", formatted_dataset[0])
+        print("One Tokenized Question: ", next(iter(self.tokenized_dataset)))
+        print("Max token size: ", self.max_token_size)
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0
         for row in tokenized_dataset:
-            # Convert the attention mask to a tensor if it's not already
-            attention_mask = row[attention_mask_column]
-            if not isinstance(attention_mask, torch.Tensor):
-                attention_mask = torch.tensor(attention_mask)
-
-            # Find the index of the first occurrence of 0
-            zero_indices = (attention_mask == 0).nonzero(as_tuple=True)[0]
-            if len(zero_indices) > 0:
-                size = zero_indices[0].item()  # Get the index as a Python int
-            else:
-                # If 0 is not found, use the full length of the attention mask
-                size = len(attention_mask)
-
-            # Update the maximum size if this row's size is greater
-            if size > max_size:
-                max_size = size
-
+            attention_mask = torch.tensor(row[attention_mask_column]) if not isinstance(row[attention_mask_column], torch.Tensor) else row[attention_mask_column]
+            one_indices = (attention_mask == 1).nonzero(as_tuple=True)[0]
+            size = self.data_config.max_len-one_indices[0].item()
+            max_size = max(max_size, size)
         return max_size
 
     def _format_question_answer(self, item):

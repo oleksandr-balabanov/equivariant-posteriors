@@ -6,28 +6,7 @@ from lib.data_registry import DataCommonsenseQaConfig
 def create_lora_ens_eval_config():
  
     # default eval config         
-    lora_ens_eval_config_default = LoraEnsEvalConfig()
-
-    # in-domain dataset
-    in_domain_dataset_config = DataCommonsenseQaConfig(
-        dataset="commonsense_qa",
-        model_checkpoint=lora_ens_eval_config_default.lora_ens_train_config.checkpoint,
-        max_len=lora_ens_eval_config_default.max_len_eval,
-        dataset_split="validation",
-    )
-
-    # out-of-domain dataset
-    out_of_domain_dataset_config = DataCommonsenseQaConfig(
-        dataset="commonsense_qa",
-        model_checkpoint=lora_ens_eval_config_default.lora_ens_train_config.checkpoint,
-        max_len=lora_ens_eval_config_default.max_len_eval,
-        dataset_split="validation",
-    )
-    
-    lora_ens_eval_config = LoraEnsEvalConfig(
-        eval_dataset_1_config = in_domain_dataset_config,
-        eval_dataset_2_config = out_of_domain_dataset_config,        
-    )
+    lora_ens_eval_config = LoraEnsEvalConfig()
 
     return  lora_ens_eval_config
 

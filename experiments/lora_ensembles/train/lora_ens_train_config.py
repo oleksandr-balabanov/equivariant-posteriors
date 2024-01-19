@@ -21,11 +21,9 @@ from lib.models.llama2_generative import LLaMA2GenerativeConfig
 from lib.models.mistral_generative import MistralGenerativeConfig
 
 from lib.metric import create_metric
-from lib.data_registry import DataCommonsenseQaConfig
-
 from experiments.lora_ensembles.utils.lora_ens_metrics import accuracy, calibration_error
 from experiments.lora_ensembles.train.lora_ens_train_config_dataclass import LoraEnsTrainConfig
-
+from experiments.lora_ensembles.datasets.dataset_config import create_dataset_config_factory
 
 
 
@@ -34,6 +32,7 @@ def create_lora_ens_train_run_config(
     ensemble_id:int,
     ens_train_config:LoraEnsTrainConfig = LoraEnsTrainConfig()
 ):
+    create_dataset_config = create_dataset_config_factory(ens_train_config.train_dataset)
     train_config = TrainConfig(
         model_config=MistralGenerativeConfig(
             checkpoint=ens_train_config.checkpoint,
@@ -43,16 +42,16 @@ def create_lora_ens_train_run_config(
             lora_l2=ens_train_config.lora_l2,
             target_modules=ens_train_config.target_modules,
         ),
-        train_data_config=DataCommonsenseQaConfig(
-            dataset="commonsense_qa",
-            model_checkpoint=ens_train_config.checkpoint,
-            max_len=ens_train_config.max_len_train,
+        train_data_config=create_dataset_config(
+            max_len_train = ens_train_config.max_len_train, 
+            max_len_val = ens_train_config.max_len_val, 
+            checkpoint=ens_train_config.checkpoint,
             dataset_split="train",
         ),
-        val_data_config=DataCommonsenseQaConfig(
-            dataset="commonsense_qa",
-            model_checkpoint=ens_train_config.checkpoint,
-            max_len=ens_train_config.max_len_val,
+        val_data_config=create_dataset_config(
+            max_len_train = ens_train_config.max_len_train, 
+            max_len_val = ens_train_config.max_len_val, 
+            checkpoint=ens_train_config.checkpoint,
             dataset_split="validation",
         ),
         loss=generative_single_token_and_lora_l2,

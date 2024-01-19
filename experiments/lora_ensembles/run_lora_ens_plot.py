@@ -13,7 +13,8 @@ from experiments.lora_ensembles.plot.lora_ens_plot_const_configs import (
     PLOT_ENS_PARAMS_REGULARL2,
     PLOT_ENS_PARAMS_LORAL2,
     PLOT_ENS_PARAMS_LORAL2_DR0D1,
-    PLOT_ENS_PARAMS_BEST_N_1
+    PLOT_ENS_PARAMS_BEST_N_1,
+    PLOT_ENS_PARAMS_RANK_N_1
 )
 from experiments.lora_ensembles.plot.lora_ens_plot_utils import (
     load_metrics_from_files,
@@ -40,7 +41,7 @@ def main():
     lora_ens_plot_config = create_lora_ens_plot_config()
 
     # plot params
-    plot_ens_params = PLOT_ENS_PARAMS_BEST_N_1
+    plot_ens_params = PLOT_ENS_PARAMS_RANK_N_1
     for plot_ens_name in plot_ens_params.keys():
         
         # load params
