@@ -22,7 +22,7 @@ def mmlu_config(checkpoint, max_len_train, max_len_val, dataset_split, subset_na
     )
 
 def create_dataset_config_factory(dataset: str):
-    mmlu_all_subsets = [MMLU_SS_SUBSETS, MMLU_STEM_SUBSETS, MMLU_HUMANITIES_SUBSETS, MMLU_OTHER_SUBSETS]
+    mmlu_all_subsets = MMLU_SS_SUBSETS+MMLU_STEM_SUBSETS+MMLU_HUMANITIES_SUBSETS+MMLU_OTHER_SUBSETS
     mmlu_all_without_ss_subsets = [item for item in mmlu_all_subsets if item not in MMLU_SS_SUBSETS]
     mmlu_all_without_stem_subsets = [item for item in mmlu_all_subsets if item not in MMLU_STEM_SUBSETS]
     config_funcs = {

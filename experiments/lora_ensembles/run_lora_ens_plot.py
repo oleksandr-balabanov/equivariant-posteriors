@@ -1,5 +1,6 @@
 
 import os
+from experiments.lora_ensembles.plot.lora_ens_plot_config_dataclass import LoraEnsPlotConfig
 from experiments.lora_ensembles.utils.lora_ens_file_naming import (
     create_results_dir,
     create_save_metric_image_file_name
@@ -14,13 +15,13 @@ from experiments.lora_ensembles.plot.lora_ens_plot_const_configs import (
     PLOT_ENS_PARAMS_LORAL2,
     PLOT_ENS_PARAMS_LORAL2_DR0D1,
     PLOT_ENS_PARAMS_BEST_N_1,
-    PLOT_ENS_PARAMS_RANK_N_1
+    PLOT_ENS_PARAMS_RANK_N_1,
+    PLOT_ENS_PARAMS_BEST_N_5
 )
 from experiments.lora_ensembles.plot.lora_ens_plot_utils import (
     load_metrics_from_files,
     plot_and_save,
 )
-
 
 def update_config(config, params):
     for param, value in params.items():
@@ -34,16 +35,17 @@ def main():
     Main function to evaluate the LORA ensemble on two datasets and calculate OOD performance.
     """
 
+
     multiple_results ={}
-    metric_name = "acc_one"
+    metric_name = "ood_score_mi"
 
     # plot config         
     lora_ens_plot_config = create_lora_ens_plot_config()
 
     # plot params
-    plot_ens_params = PLOT_ENS_PARAMS_RANK_N_1
+    plot_ens_params = PLOT_ENS_PARAMS_BEST_N_5
     for plot_ens_name in plot_ens_params.keys():
-        
+    
         # load params
         one_ens_params = plot_ens_params[plot_ens_name]
         lora_ens_train_config = lora_ens_plot_config.lora_ens_train_config
