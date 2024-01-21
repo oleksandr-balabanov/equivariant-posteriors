@@ -77,6 +77,7 @@ def calculate_targets_ensemble(
 
 def calculate_ens_softmax_probs_and_targets(
     eval_dataset_config, 
+    eval_batch_size:int,
     lora_ensemble: LORAEnsemble, 
     device: torch.device,
     save_file_path:str = None,
@@ -94,7 +95,7 @@ def calculate_ens_softmax_probs_and_targets(
     """
     lora_ensemble.model.train()    
     eval_dataset = data_factory.get_factory().create(eval_dataset_config)
-    eval_loader = DataLoader(eval_dataset, batch_size=eval_dataset_config.eval_batch_size)
+    eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size)
     accumulated_targets = []
     accumulated_ens_probs = []
 
@@ -146,7 +147,6 @@ def calculate_accuracy_over_ens(
     mean_softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
     predicted_labels = torch.argmax(mean_softmax_probs, dim=-1)
     correct_predictions = torch.sum(predicted_labels == final_targets)
-    print(predicted_labels)
     accuracy = correct_predictions.item() / len(final_targets)
 
     return accuracy
@@ -324,6 +324,7 @@ def calculate_mutual_information(
 
 def evaluate_lora_ens_on_dataset(
     dataset_config,
+    eval_batch_size:int,
     lora_ensemble: LORAEnsemble,  
     device: torch.device, 
     save_file_path: str = None,
@@ -349,7 +350,7 @@ def evaluate_lora_ens_on_dataset(
     except:
         # if fail then calculate and save
         "Loading is not complete: Calculating the ens softmax probabilities from scratch..."
-        ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, lora_ensemble, device, save_file_path)
+        ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble, device, save_file_path)
         "Calculation is complete."
 
     # calculate the metrics
@@ -393,6 +394,8 @@ def print_single_dataset_results(
 def evaluate_lora_ens_on_two_datasets_and_ood(
     dataset_1_config, 
     dataset_2_config, 
+    eval_batch_size_1:int,
+    eval_batch_size_2:int,
     lora_ensemble: LORAEnsemble, 
     device: torch.device,
     save_file_path_1: str = None,
@@ -416,10 +419,10 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     """
     
     # Evaluate on the first dataset
-    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, lora_ensemble, device, save_file_path=save_file_path_1)
+    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, eval_batch_size_1, lora_ensemble, device, save_file_path=save_file_path_1)
 
     # Evaluate on the second dataset
-    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, lora_ensemble, device, save_file_path=save_file_path_2)
+    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, eval_batch_size_2, lora_ensemble, device, save_file_path=save_file_path_2)
 
     # Calculate OOD performance
     ood_score_max_probs = calculate_ood_performance_auroc(ood_scores_one["ood_scores_max_probs"], ood_scores_two["ood_scores_max_probs"])

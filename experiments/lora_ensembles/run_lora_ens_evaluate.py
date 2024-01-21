@@ -37,8 +37,16 @@ def main():
 
     # eval config
     lora_ens_eval_config = create_lora_ens_eval_config()
-    eval_dataset_1_config = create_eval_dataset_config(lora_ens_eval_config, lora_ens_eval_config.eval_dataset_1)
-    eval_dataset_2_config = create_eval_dataset_config(lora_ens_eval_config, lora_ens_eval_config.eval_dataset_2)
+    eval_dataset_1_config = create_eval_dataset_config(
+        lora_ens_eval_config.lora_ens_train_config.checkpoint, 
+        lora_ens_eval_config.eval_dataset_1,
+        lora_ens_eval_config.max_len_eval_1,
+        )
+    eval_dataset_2_config = create_eval_dataset_config(
+        lora_ens_eval_config.lora_ens_train_config.checkpoint,
+        lora_ens_eval_config.eval_dataset_2,
+        lora_ens_eval_config.max_len_eval_2,
+        )
 
     # configure inference config function  
     create_inference_config = create_lora_ens_inference_config_factory(
@@ -80,6 +88,8 @@ def main():
             ens_result_per_epoch = evaluate_lora_ens_on_two_datasets_and_ood(
                 dataset_1_config = eval_dataset_1_config, 
                 dataset_2_config = eval_dataset_2_config, 
+                eval_batch_size_1 = lora_ens_eval_config.eval_batch_size_1,
+                eval_batch_size_2 = lora_ens_eval_config.eval_batch_size_2,
                 lora_ensemble = lora_ensemble, 
                 device = device,
                 save_file_path_1=save_file_path_1,

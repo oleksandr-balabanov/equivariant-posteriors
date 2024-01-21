@@ -199,3 +199,27 @@ PLOT_ENS_PARAMS_RANK_N_1 = {
         "regular_l2":0,
     },    
 }
+
+# plot config params for lora ens
+PLOT_ENS_PARAMS_BEST_N_5 = {
+    "ens lora l2 1 dr 0": {
+        "lora_dropout":0,
+        "lora_l2":1,
+        "regular_l2":0,
+    },
+    "ens lora l2 0d1 dr 0d1": {
+        "lora_dropout":0.1,
+        "lora_l2":0.1,
+        "regular_l2":0,
+    },
+    "ens lora l2 1 dr 0d1": {
+        "lora_dropout":0.1,
+        "lora_l2":1,
+        "regular_l2":0,
+    },
+    "ens regular l2 0d001 dr 0": {
+        "lora_dropout":0,
+        "lora_l2":0,
+        "regular_l2":0.001,
+    },     
+}

@@ -41,6 +41,7 @@ def flatten_result_dic(res_dict):
 
     # Merge the 'ood_score' dictionary with the main dictionary
     flattened_dict = {**res_dict, **ood_score_dict}
+    print(flattened_dict)
 
     return flattened_dict
 
