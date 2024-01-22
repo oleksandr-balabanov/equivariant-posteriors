@@ -10,7 +10,7 @@ def create_results_dir(lora_ens_eval_config:LoraEnsEvalConfig):
     
     dir1_name = lora_ens_eval_config.eval_dir_name
     dir2_name = "train_"+lora_ens_train_config.train_dataset
-    dir3_name = "ens_"+str(lora_ens_eval_config.n_members)
+    dir3_name = "ens"
     dir4_name = "eval1_"+lora_ens_eval_config.eval_dataset_1
     dir5_name = "eval2_"+lora_ens_eval_config.eval_dataset_2
 
@@ -27,6 +27,12 @@ def create_results_dir_per_epoch(dir_path_without_epoch, epoch):
 def create_results_dir_per_epoch_and_dataset_num(dir_path_with_epoch, dataset_num):
 
     dir_path = os.path.join(dir_path_with_epoch, f"dataset_{str(dataset_num)}")
+    os.makedirs(dir_path, exist_ok=True)
+    return dir_path
+
+def create_results_dir_per_epoch_dataset_num_and_member_id(dir_path_with_epoch, member_id):
+
+    dir_path = os.path.join(dir_path_with_epoch, f"member_{str(member_id)}")
     os.makedirs(dir_path, exist_ok=True)
     return dir_path
 
@@ -59,13 +65,14 @@ def create_save_metrics_file_name(lora_ens_eval_config:Union[LoraEnsEvalConfig, 
 
     return file_name
 
-def create_save_ens_probs_and_targets_file_name(lora_ens_eval_config:LoraEnsEvalConfig):
+def create_save_probs_and_targets_file_name(lora_ens_eval_config:LoraEnsEvalConfig):
+    
 
     # train config
     lora_ens_train_config = lora_ens_eval_config.lora_ens_train_config
     
     # file name
-    file_name = "ens_probs_and_targets_"
+    file_name = f"member_probs_and_targets_"
     file_name += extract_model_name_from_checkpoint(lora_ens_train_config.checkpoint)
     file_name += f"_n_{lora_ens_eval_config.n_members}"
     file_name += f"_lr_{lora_ens_train_config.lora_rank}"
@@ -93,6 +100,9 @@ def create_save_metric_image_file_name(lora_ens_plot_config:LoraEnsPlotConfig, m
     
     return file_name
 
-
+def create_file_path(dir_path, file_name, member_id):
+    new_dir_path = os.path.join(dir_path, str(member_id))
+    os.makedirs(new_dir_path, exist_ok=True)
+    return os.path.join(new_dir_path, file_name)
 
 

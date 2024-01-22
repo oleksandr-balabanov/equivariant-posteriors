@@ -10,94 +10,50 @@ from torch.utils.data import DataLoader
 from experiments.lora_ensembles.utils.lora_ens_metrics import create_metric_sample_single_token
 from experiments.lora_ensembles.utils.lora_ens_inference import LORAEnsemble
 from experiments.lora_ensembles.utils.lora_ens_file_operations import save_to_dill, load_from_dill
+from experiments.lora_ensembles.utils.lora_ens_file_naming import create_file_path
 
 IGNORE_INDEX = -100
 
-def calculate_softmax_probs_ensemble(
-    outputs_list: List[torch.Tensor], 
+def calculate_softmax_probs(
+    output: torch.Tensor, 
     batch: Dict[str, torch.Tensor], 
     metric_sample_creator: Callable = create_metric_sample_single_token
 ) -> torch.Tensor:
-    """
-    Calculate softmax probabilities for each output in an ensemble of models.
 
-    Args:
-        outputs_list (List[torch.Tensor]): Outputs from each model in the ensemble.
-        batch (Dict[str, torch.Tensor]): Batch of input data.
-        metric_sample_creator (Callable): Function to create a metric sample from the model's output.
+    metric_sample = metric_sample_creator(output, batch)
+    predictions = metric_sample["predictions"]
 
-    Returns:
-        torch.Tensor: Concatenated softmax probabilities from the ensemble.
-    """
-    softmax_probs_ensemble = []
+    return predictions
 
-    for output in outputs_list:
-        metric_sample = metric_sample_creator(output, batch)
-        predictions = metric_sample["predictions"].unsqueeze(0)
-        softmax_probs_ensemble.append(predictions)
+def calculate_mean_softmax_probs (softmax_probs_ensemble: torch.Tensor) -> torch.Tensor:
 
-    return torch.cat(softmax_probs_ensemble)
-
-def calculate_mean_softmax_probs(softmax_probs_ensemble: torch.Tensor) -> torch.Tensor:
-    """
-    Calculate the mean of softmax probabilities from an ensemble.
-
-    Args:
-        softmax_probs_ensemble (torch.Tensor): Tensor containing softmax probabilities from the ensemble.
-
-    Returns:
-        torch.Tensor: Mean softmax probabilities.
-    """
     mean_softmax_probs = torch.mean(softmax_probs_ensemble, dim=0)
     return mean_softmax_probs
 
-def calculate_targets_ensemble(
-    outputs_list: List[torch.Tensor], 
+def calculate_targets(
+    output: torch.Tensor, 
     batch: Dict[str, torch.Tensor], 
     metric_sample_creator: Callable = create_metric_sample_single_token
-) -> List[torch.Tensor]:
-    """
-    Calculate targets for an ensemble of models.
+) -> torch.Tensor:
+    
+    metric_sample = metric_sample_creator(output, batch)
+    return metric_sample["targets"]
 
-    Args:
-        outputs_list (List[torch.Tensor]): Outputs from each model in the ensemble.
-        batch (Dict[str, torch.Tensor]): Batch of input data.
-        metric_sample_creator (Callable): Function to create a metric sample from the model's output.
-
-    Returns:
-        List[torch.Tensor]: List of targets for each model in the ensemble.
-    """
-    targets_ensemble = []
-
-    for output in outputs_list:
-        metric_sample = metric_sample_creator(output, batch)
-        targets_ensemble.append(metric_sample["targets"])
-
-    return targets_ensemble
-
-def calculate_ens_softmax_probs_and_targets(
+def calculate_member_softmax_probs_and_targets(
     eval_dataset_config, 
     eval_batch_size:int,
-    lora_ensemble: LORAEnsemble, 
+    member_id:int,
+    lora_ens: LORAEnsemble, 
     device: torch.device,
     save_file_path:str = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Calculates ensemble softmax probabilities and targets for the evaluation dataset.
-
-    Args:
-        lora_ensemble (LORAEnsemble): The ensemble of LoRA models.
-        eval_dataset_config: The dataset config for evaluation.
-        device (torch.device): The device to perform calculations on.
-
-    Returns:
-        Tuple[torch.Tensor, torch.Tensor]: Ensemble softmax probabilities and corresponding targets.
-    """
-    lora_ensemble.model.train()    
+    
+    lora_ens.load_member(member_id)
+    lora_ens.model.train()    
     eval_dataset = data_factory.get_factory().create(eval_dataset_config)
     eval_loader = DataLoader(eval_dataset, batch_size=eval_batch_size)
     accumulated_targets = []
-    accumulated_ens_probs = []
+    accumulated_probs = []
 
     with torch.no_grad():
         for i_batch, batch in enumerate(eval_loader):
@@ -108,25 +64,64 @@ def calculate_ens_softmax_probs_and_targets(
                 "attention_mask": batch["attention_mask"].to(device)
             }
             try:
-                outputs_list = lora_ensemble.ensemble_forward(batch=reshaped_batch)
-                softmax_probs_ensemble = calculate_softmax_probs_ensemble(outputs_list, reshaped_batch)
-                targets_ensemble = calculate_targets_ensemble(outputs_list, reshaped_batch)
+                outputs = lora_ens.member_forward(batch=reshaped_batch)
+                softmax_probs = calculate_softmax_probs(outputs, reshaped_batch)
+                targets = calculate_targets(outputs, reshaped_batch)
             except Exception as e:
                 print(f"Error during model forward pass: {e}")
                 continue
 
-            accumulated_targets.append(targets_ensemble[0])
-            accumulated_ens_probs.append(softmax_probs_ensemble)
+            accumulated_targets.append(targets)
+            accumulated_probs.append(softmax_probs)
 
     final_targets = torch.cat(accumulated_targets)
-    final_ens_softmax_probs = torch.cat(accumulated_ens_probs, dim=1)
+    final_softmax_probs = torch.cat(accumulated_probs, dim=0)
 
     if save_file_path:
         res_dic = {
+           "member_id": member_id,
            "targets": final_targets,
-           "ens_softmax_probs": final_ens_softmax_probs,
+           "softmax_probs": final_softmax_probs,
         }
         save_to_dill(res_dic, save_file_path)
+
+    return final_softmax_probs, final_targets
+
+
+def calculate_ens_softmax_probs_and_targets(
+    eval_dataset_config, 
+    eval_batch_size:int,
+    lora_ens: LORAEnsemble, 
+    device: torch.device,
+    save_file_name:str = None,
+    save_file_dir:str = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+
+    num_members = len(lora_ens.ensemble_state_dicts)  
+    accumulated_ens_probs = []
+    for member_id in range(num_members):
+        member_file_path = "" 
+        try:
+            if save_file_dir:
+                member_file_path = create_file_path(save_file_dir, save_file_name, member_id)
+            res_dic = load_from_dill(member_file_path)
+            softmax_probs = res_dic["softmax_probs"]
+            targets = res_dic["targets"]
+        except:
+            lora_ens.load_member(member_id)
+            softmax_probs, targets = calculate_member_softmax_probs_and_targets(
+                eval_dataset_config, 
+                eval_batch_size,
+                member_id,
+                lora_ens, 
+                device,
+                member_file_path,
+            )
+        
+        accumulated_ens_probs.append(softmax_probs.unsqueeze(0))
+
+    final_ens_softmax_probs = torch.cat(accumulated_ens_probs, dim=0)
+    final_targets = targets
 
     return final_ens_softmax_probs, final_targets
 
@@ -327,7 +322,8 @@ def evaluate_lora_ens_on_dataset(
     eval_batch_size:int,
     lora_ensemble: LORAEnsemble,  
     device: torch.device, 
-    save_file_path: str = None,
+    save_file_name: str = None,
+    save_file_dir: str = None,
 ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Evaluate the LORA ensemble on a single dataset to calculate accuracy, loss, and calibration error.
@@ -340,18 +336,8 @@ def evaluate_lora_ens_on_dataset(
     Returns:
         Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]: Accuracy, loss, calibration error, and OOD scores.
     """
-    try:
-        # load from file
-        "Loading the ens softmax probabilitiess..."
-        res = load_from_dill(save_file_path)
-        ens_probs = res["ens_softmax_probs"]
-        targets = res["targets"]
-        "Loading is complete."
-    except:
-        # if fail then calculate and save
-        "Loading is not complete: Calculating the ens softmax probabilities from scratch..."
-        ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble, device, save_file_path)
-        "Calculation is complete."
+
+    ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble, device, save_file_name, save_file_dir)
 
     # calculate the metrics
     accuracy = calculate_accuracy_over_ens(ens_probs, targets)
@@ -398,8 +384,10 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     eval_batch_size_2:int,
     lora_ensemble: LORAEnsemble, 
     device: torch.device,
-    save_file_path_1: str = None,
-    save_file_path_2: str = None,
+    save_file_dir_1: str = None,
+    save_file_dir_2: str = None,
+    save_file_name_1: str = None,
+    save_file_name_2: str = None,
 ) -> Dict[str, float]:
     """
     Evaluate the LORA ensemble on two distinct datasets and calculate Out-Of-Distribution (OOD) performance.
@@ -419,10 +407,10 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     """
     
     # Evaluate on the first dataset
-    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, eval_batch_size_1, lora_ensemble, device, save_file_path=save_file_path_1)
+    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, eval_batch_size_1, lora_ensemble, device, save_file_dir=save_file_dir_1, save_file_name=save_file_name_1)
 
     # Evaluate on the second dataset
-    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, eval_batch_size_2, lora_ensemble, device, save_file_path=save_file_path_2)
+    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, eval_batch_size_2, lora_ensemble, device, save_file_dir=save_file_dir_2, save_file_name=save_file_name_2)
 
     # Calculate OOD performance
     ood_score_max_probs = calculate_ood_performance_auroc(ood_scores_one["ood_scores_max_probs"], ood_scores_two["ood_scores_max_probs"])
