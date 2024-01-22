@@ -23,7 +23,7 @@ from experiments.lora_ensembles.utils.lora_ens_file_naming import (
     create_results_dir_per_epoch,
     create_results_dir_per_epoch_and_dataset_num,
     create_save_metrics_file_name,
-    create_save_ens_probs_and_targets_file_name,  
+    create_save_probs_and_targets_file_name,  
 )
 from experiments.lora_ensembles.utils.lora_ens_file_operations import (
     save_to_dill
@@ -75,15 +75,16 @@ def main():
             lora_ensemble = create_lora_ensemble(ensemble_config.members, device, checkpoint_epochs = train_epochs)
             
             # save path dir and file
-            save_file_path_1=None
-            save_file_path_2=None
+            dir1=None
+            dir2=None
+            file_name1 = None
+            file_name2 = None
             if lora_ens_eval_config.load_softmax_probs:
                 dir1 = create_results_dir_per_epoch_and_dataset_num(save_results_dir_per_epoch, 1)
                 dir2 = create_results_dir_per_epoch_and_dataset_num(save_results_dir_per_epoch, 2)
-                file_name1 = create_save_ens_probs_and_targets_file_name(lora_ens_eval_config)
-                file_name2 = create_save_ens_probs_and_targets_file_name(lora_ens_eval_config)
-                save_file_path_1=os.path.join(dir1,file_name1)
-                save_file_path_2=os.path.join(dir2,file_name2)
+                file_name1 = create_save_probs_and_targets_file_name(lora_ens_eval_config)
+                file_name2 = create_save_probs_and_targets_file_name(lora_ens_eval_config)
+
             
             ens_result_per_epoch = evaluate_lora_ens_on_two_datasets_and_ood(
                 dataset_1_config = eval_dataset_1_config, 
@@ -92,8 +93,10 @@ def main():
                 eval_batch_size_2 = lora_ens_eval_config.eval_batch_size_2,
                 lora_ensemble = lora_ensemble, 
                 device = device,
-                save_file_path_1=save_file_path_1,
-                save_file_path_2= save_file_path_2,
+                save_file_dir_1=dir1,
+                save_file_dir_2=dir2,            
+                save_file_name_1=file_name1,
+                save_file_name_2= file_name2,
             )
 
             # free gpu

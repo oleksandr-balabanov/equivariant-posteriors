@@ -67,6 +67,15 @@ class LORAEnsemble:
             output = {k: v.detach() for k, v in output.items()}
             outputs.append(output)
         return outputs
+    
+    def load_member(self, member_id):
+        member_state_dict = self.ensemble_state_dicts[member_id]
+        self.model.load_state_dict(member_state_dict)
+
+    def member_forward(self, batch):
+        output = self.model(batch)
+        output = {k: v.detach() for k, v in output.items()}
+        return output
 
 
 def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_epochs = None):
