@@ -37,7 +37,7 @@ def main():
 
 
     multiple_results ={}
-    metric_name = "ood_score_mi"
+    metric_name = "ood_score_entropy"
 
     # plot config         
     lora_ens_plot_config = create_lora_ens_plot_config()
@@ -48,9 +48,9 @@ def main():
     
         # load params
         one_ens_params = plot_ens_params[plot_ens_name]
-        lora_ens_train_config = lora_ens_plot_config.lora_ens_train_config
+        lora_ens_train_config = lora_ens_plot_config.lora_ens_train_config_1
         update_config(lora_ens_train_config, one_ens_params)
-        lora_ens_plot_config.lora_ens_train_config = lora_ens_train_config
+        lora_ens_plot_config.lora_ens_train_config_1 = lora_ens_train_config
         
         # load metric values
         multiple_results[plot_ens_name]  = load_metrics_from_files(lora_ens_plot_config, metric_name)

@@ -11,19 +11,35 @@ from experiments.lora_ensembles.utils.lora_ens_metrics import create_metric_samp
 from experiments.lora_ensembles.utils.lora_ens_inference import LORAEnsemble
 from experiments.lora_ensembles.utils.lora_ens_file_operations import save_to_dill, load_from_dill
 from experiments.lora_ensembles.utils.lora_ens_file_naming import create_file_path
+from experiments.lora_ensembles.eval.lora_ens_evaluate_config_dataclass import LoraEnsEvalConfig
 
 IGNORE_INDEX = -100
 
 def calculate_softmax_probs(
     output: torch.Tensor, 
     batch: Dict[str, torch.Tensor], 
-    metric_sample_creator: Callable = create_metric_sample_single_token
+    metric_sample_creator: Callable = create_metric_sample_single_token,
+    eval_tokens:List[int] = None
 ) -> torch.Tensor:
 
     metric_sample = metric_sample_creator(output, batch)
     predictions = metric_sample["predictions"]
+    if eval_tokens:
+        rescaled_predictions = rescale_softmax_probs(predictions, eval_tokens)
 
-    return predictions
+    return rescaled_predictions
+
+def rescale_softmax_probs(softmax_probs: torch.Tensor, eval_tokens:List[int]):
+
+    rescaled_softmax_probs = softmax_probs[:, eval_tokens]
+
+    # Compute the sum along the last dimension (dim=-1)
+    sum_along_last_dim = torch.sum(rescaled_softmax_probs, dim=-1, keepdim=True)
+
+    # Divide the original tensor by this sum to rescale
+    rescaled_softmax_probs /= sum_along_last_dim
+
+    return rescaled_softmax_probs
 
 def calculate_mean_softmax_probs (softmax_probs_ensemble: torch.Tensor) -> torch.Tensor:
 
@@ -33,19 +49,34 @@ def calculate_mean_softmax_probs (softmax_probs_ensemble: torch.Tensor) -> torch
 def calculate_targets(
     output: torch.Tensor, 
     batch: Dict[str, torch.Tensor], 
-    metric_sample_creator: Callable = create_metric_sample_single_token
+    metric_sample_creator: Callable = create_metric_sample_single_token,
+    eval_tokens:List[int] = None
 ) -> torch.Tensor:
     
     metric_sample = metric_sample_creator(output, batch)
-    return metric_sample["targets"]
+    targets = metric_sample["targets"]
+    if eval_tokens:
+        # Convert eval_tokens to a tensor
+        eval_tokens_tensor = torch.tensor(eval_tokens)
+
+        # Initialize an empty tensor for the transformed targets
+        transformed_targets = torch.empty_like(targets)
+
+        # Vectorized mapping of each value in targets to its index in eval_tokens
+        for idx, token in enumerate(eval_tokens_tensor):
+            transformed_targets[targets == token] = idx
+        targets = transformed_targets
+
+    return targets 
 
 def calculate_member_softmax_probs_and_targets(
-    eval_dataset_config, 
+    eval_dataset_config:LoraEnsEvalConfig, 
     eval_batch_size:int,
     member_id:int,
     lora_ens: LORAEnsemble, 
     device: torch.device,
     save_file_path:str = None,
+    eval_tokens:List[int] = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     
     lora_ens.load_member(member_id)
@@ -58,15 +89,15 @@ def calculate_member_softmax_probs_and_targets(
     with torch.no_grad():
         for i_batch, batch in enumerate(eval_loader):
             if i_batch % 100 == 0:
-                print("Batch: ", i_batch)
+                print(f"Member {member_id}, Batch: {i_batch}")
             reshaped_batch = {
                 "input_ids": batch["input_ids"].to(device),
                 "attention_mask": batch["attention_mask"].to(device)
             }
             try:
-                outputs = lora_ens.member_forward(batch=reshaped_batch)
-                softmax_probs = calculate_softmax_probs(outputs, reshaped_batch)
-                targets = calculate_targets(outputs, reshaped_batch)
+                output = lora_ens.member_forward(batch=reshaped_batch)
+                softmax_probs = calculate_softmax_probs(output = output, batch = reshaped_batch, eval_tokens=eval_tokens)
+                targets = calculate_targets(output= output, batch= reshaped_batch, eval_tokens=eval_tokens)
             except Exception as e:
                 print(f"Error during model forward pass: {e}")
                 continue
@@ -74,8 +105,8 @@ def calculate_member_softmax_probs_and_targets(
             accumulated_targets.append(targets)
             accumulated_probs.append(softmax_probs)
 
-    final_targets = torch.cat(accumulated_targets)
-    final_softmax_probs = torch.cat(accumulated_probs, dim=0)
+    final_targets = torch.cat(accumulated_targets).detach().cpu()
+    final_softmax_probs = torch.cat(accumulated_probs, dim=0).detach().cpu()
 
     if save_file_path:
         res_dic = {
@@ -95,6 +126,7 @@ def calculate_ens_softmax_probs_and_targets(
     device: torch.device,
     save_file_name:str = None,
     save_file_dir:str = None,
+    eval_tokens:List[int] = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
 
     num_members = len(lora_ens.ensemble_state_dicts)  
@@ -105,8 +137,13 @@ def calculate_ens_softmax_probs_and_targets(
             if save_file_dir:
                 member_file_path = create_file_path(save_file_dir, save_file_name, member_id)
             res_dic = load_from_dill(member_file_path)
-            softmax_probs = res_dic["softmax_probs"]
-            targets = res_dic["targets"]
+            softmax_probs = res_dic["softmax_probs"].detach().cpu()
+            targets = res_dic["targets"].detach().cpu()
+            res_dic = {
+                "softmax_probs":softmax_probs,
+                "targets":targets
+            }
+            save_to_dill(res_dic, member_file_path)
         except:
             lora_ens.load_member(member_id)
             softmax_probs, targets = calculate_member_softmax_probs_and_targets(
@@ -116,6 +153,7 @@ def calculate_ens_softmax_probs_and_targets(
                 lora_ens, 
                 device,
                 member_file_path,
+                eval_tokens
             )
         
         accumulated_ens_probs.append(softmax_probs.unsqueeze(0))
@@ -274,43 +312,33 @@ def calculate_max_average_probs(
     mean_softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
     max_mean_softmax_probs, _ = torch.max(mean_softmax_probs, dim=-1)
 
-    return max_mean_softmax_probs
+    return -max_mean_softmax_probs
 
-def calculate_entropy(
+def calculate_entropy_ens(
     softmax_probs_ensemble: torch.Tensor, 
     dim: int = -1, 
     eps: float = 1e-9
 ) -> torch.Tensor:
-    """
-    Calculate entropy of softmax probabilities.
 
-    Args:
-        softmax_probs_ensemble (torch.Tensor): Softmax probabilities.
-        dim (int): Dimension over which to calculate entropy. Defaults to -1.
-        eps (float): Small value to prevent log(0). Defaults to 1e-9.
-
-    Returns:
-        torch.Tensor: Entropy of softmax probabilities.
-    """
     softmax_probs = calculate_mean_softmax_probs(softmax_probs_ensemble)
-    entropy = -torch.sum(softmax_probs * torch.log(softmax_probs + eps), dim=dim)
+    entropy = calculate_entropy(softmax_probs, dim, eps)
 
     return entropy
 
-def calculate_mutual_information(
+def calculate_entropy(
+    softmax_probs: torch.Tensor, 
+    dim: int = -1, 
+    eps: float = 1e-9
+) -> torch.Tensor:
+    entropy = -torch.sum(softmax_probs * torch.log(softmax_probs + eps), dim=dim)
+    return entropy
+
+def calculate_mutual_information_ens(
     softmax_probs_ensemble: torch.Tensor
 ) -> torch.Tensor:
-    """
-    Calculate mutual information for an ensemble.
 
-    Args:
-        softmax_probs_ensemble (torch.Tensor): Ensemble softmax probabilities.
-
-    Returns:
-        torch.Tensor: Mutual information.
-    """
-    entropy_of_the_mean_ens_prob = calculate_entropy(softmax_probs_ensemble)
-    mean_ens_entropy = torch.mean(calculate_entropy(softmax_probs_ensemble.unsqueeze(0)), dim=0)
+    entropy_of_the_mean_ens_prob = calculate_entropy_ens(softmax_probs_ensemble)
+    mean_ens_entropy = torch.mean(calculate_entropy(softmax_probs_ensemble), dim=0)
     
     mutual_information = entropy_of_the_mean_ens_prob - mean_ens_entropy
 
@@ -324,6 +352,7 @@ def evaluate_lora_ens_on_dataset(
     device: torch.device, 
     save_file_name: str = None,
     save_file_dir: str = None,
+    eval_tokens: List[str] = None
 ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Evaluate the LORA ensemble on a single dataset to calculate accuracy, loss, and calibration error.
@@ -337,7 +366,7 @@ def evaluate_lora_ens_on_dataset(
         Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]: Accuracy, loss, calibration error, and OOD scores.
     """
 
-    ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble, device, save_file_name, save_file_dir)
+    ens_probs, targets = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble, device, save_file_name, save_file_dir, eval_tokens)
 
     # calculate the metrics
     accuracy = calculate_accuracy_over_ens(ens_probs, targets)
@@ -345,8 +374,8 @@ def evaluate_lora_ens_on_dataset(
     ce = calculate_ce_over_ens(ens_probs, targets)
 
     ood_scores_max_probs = calculate_max_average_probs(ens_probs)
-    ood_scores_entropy = calculate_entropy(ens_probs)
-    ood_scores_mi = calculate_mutual_information(ens_probs)
+    ood_scores_entropy = calculate_entropy_ens(ens_probs)
+    ood_scores_mi = calculate_mutual_information_ens(ens_probs)
     ood_scores = {
         "ood_scores_max_probs":ood_scores_max_probs,
         "ood_scores_entropy":ood_scores_entropy,
@@ -388,6 +417,7 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     save_file_dir_2: str = None,
     save_file_name_1: str = None,
     save_file_name_2: str = None,
+    eval_tokens:List[str] = None
 ) -> Dict[str, float]:
     """
     Evaluate the LORA ensemble on two distinct datasets and calculate Out-Of-Distribution (OOD) performance.
@@ -407,15 +437,17 @@ def evaluate_lora_ens_on_two_datasets_and_ood(
     """
     
     # Evaluate on the first dataset
-    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, eval_batch_size_1, lora_ensemble, device, save_file_dir=save_file_dir_1, save_file_name=save_file_name_1)
+    acc_one, loss_one, ce_one, ood_scores_one = evaluate_lora_ens_on_dataset(dataset_1_config, eval_batch_size_1, lora_ensemble, device, save_file_dir=save_file_dir_1, save_file_name=save_file_name_1, eval_tokens = eval_tokens)
 
     # Evaluate on the second dataset
-    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, eval_batch_size_2, lora_ensemble, device, save_file_dir=save_file_dir_2, save_file_name=save_file_name_2)
+    acc_two, loss_two, ce_two, ood_scores_two = evaluate_lora_ens_on_dataset(dataset_2_config, eval_batch_size_2, lora_ensemble, device, save_file_dir=save_file_dir_2, save_file_name=save_file_name_2, eval_tokens = eval_tokens)
 
     # Calculate OOD performance
     ood_score_max_probs = calculate_ood_performance_auroc(ood_scores_one["ood_scores_max_probs"], ood_scores_two["ood_scores_max_probs"])
+
     ood_score_entropy = calculate_ood_performance_auroc(ood_scores_one["ood_scores_entropy"], ood_scores_two["ood_scores_entropy"])
     ood_score_mi = calculate_ood_performance_auroc(ood_scores_one["ood_scores_mi"], ood_scores_two["ood_scores_mi"])
+
     ood_score = {
         "ood_score_max_probs":ood_score_max_probs,
         "ood_score_entropy":ood_score_entropy,
@@ -450,7 +482,47 @@ def print_odd(
         print(f"OOD AUROC Score for {ood_key} and for in domain {in_domain_dataset_name}/out-of-domain {out_of_domain_dataset_name}: {ood_score[ood_key]:.4f}")
 
 
+def evaluate_two_lora_ens_and_agr_var(
+    dataset_config, 
+    eval_batch_size:int,
+    lora_ensemble_1: LORAEnsemble, 
+    lora_ensemble_2: LORAEnsemble,
+    device: torch.device,
+    save_file_dir: str = None,
+    save_file_name_1: str = None,
+    save_file_name_2: str = None,
+    eval_tokens:List[str] = None
+) -> Dict[str, float]:
+    
+    ens_probs_1, _ = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble_1, device, save_file_name_1, save_file_dir, eval_tokens)
+    ens_probs_2, _ = calculate_ens_softmax_probs_and_targets(dataset_config, eval_batch_size, lora_ensemble_2, device, save_file_name_2, save_file_dir, eval_tokens)
+
+    agreement = calculate_agreement(ens_probs_1, ens_probs_2) 
+    variance = calculate_variance(ens_probs_1, ens_probs_2) 
+    
+    print(f"Agreement: {agreement}")
+    print(f"Variance: {variance}")
+
+    return {
+        "agreement": agreement, 
+        "variance": variance, 
+    }
 
 
+def calculate_agreement(ens_probs_1, ens_probs_2):
+    # Move tensors to the same device
+    ens_probs_1 = ens_probs_1.to('cpu')
+    ens_probs_2 = ens_probs_2.to('cpu')
 
-   
+    p1 = torch.mean(ens_probs_1, dim=0)
+    p2 = torch.mean(ens_probs_2, dim=0)
+    return torch.sum(torch.ones((p1.shape[0]))[torch.argmax(p1, dim=1)==torch.argmax(p2, dim=1)])/p1.shape[0]
+
+def calculate_variance(ens_probs_1, ens_probs_2):
+    # Move tensors to the same device
+    ens_probs_1 = ens_probs_1.to('cpu')
+    ens_probs_2 = ens_probs_2.to('cpu')
+
+    p1 = torch.mean(ens_probs_1, dim=0)
+    p2 = torch.mean(ens_probs_2, dim=0)
+    return torch.sum(torch.abs(p1-p2))/(2*p1.shape[0])

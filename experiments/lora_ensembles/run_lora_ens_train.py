@@ -7,7 +7,7 @@ from experiments.lora_ensembles.train.lora_ens_train_config import create_lora_e
 
 def main():
     print("Start")
-    ensemble_config = create_ensemble_config(create_lora_ens_train_run_config, 10)
+    ensemble_config = create_ensemble_config(create_lora_ens_train_run_config, 1)
     prepare_results("lora_ensemble", ensemble_config.members)
     print("ensemble_config finished")
     request_ensemble(ensemble_config)

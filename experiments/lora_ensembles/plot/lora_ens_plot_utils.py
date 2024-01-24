@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from experiments.lora_ensembles.utils.lora_ens_file_naming import (
     create_results_dir,
     create_results_dir_per_epoch,
-    create_save_metrics_file_name
+    create_save_metrics_file_name,
+    create_save_agr_var_file_name
 )
 from experiments.lora_ensembles.utils.lora_ens_file_operations import (
     save_to_dill, load_from_dill
@@ -41,8 +42,6 @@ def flatten_result_dic(res_dict):
 
     # Merge the 'ood_score' dictionary with the main dictionary
     flattened_dict = {**res_dict, **ood_score_dict}
-    print(flattened_dict)
-
     return flattened_dict
 
 def load_metrics_from_files(lora_ens_plot_config:LoraEnsPlotConfig, metric_name:str):
@@ -55,7 +54,12 @@ def load_metrics_from_files(lora_ens_plot_config:LoraEnsPlotConfig, metric_name:
         save_results_dir_per_epoch = create_results_dir_per_epoch(save_results_dir, train_epochs)
 
         # save to file
-        file_name = create_save_metrics_file_name(lora_ens_plot_config)
+        file_name = ""
+        if lora_ens_plot_config.eval_ood:
+            file_name = create_save_metrics_file_name(lora_ens_plot_config)
+        if lora_ens_plot_config.eval_agr_var:
+            file_name = create_save_agr_var_file_name(lora_ens_plot_config)
+        
         file_path =  os.path.join(save_results_dir_per_epoch, file_name)
         eval_res = load_from_dill(file_path = file_path)
         ens_result_per_epoch = eval_res["ens_result_per_epoch"]
