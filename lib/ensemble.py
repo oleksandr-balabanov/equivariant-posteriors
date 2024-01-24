@@ -7,7 +7,7 @@ import torch
 from lib.train_dataclasses import TrainRun
 from lib.train import load_or_create_state
 from lib.train import do_training
-from lib.train_distributed import request_train_run, lock_requested_hash
+from lib.train_distributed import request_train_runs, lock_requested_hash
 from lib.serialization import (
     get_checkpoint_path,
     deserialize_model,
@@ -70,12 +70,13 @@ def train_member(ensemble_config: EnsembleConfig, member_idx: int, device_id):
 
 
 def request_ensemble(ensemble_config: EnsembleConfig):
-    for member_config in ensemble_config.members:
-        try:
-            request_train_run(member_config)
-        except filelock.Timeout:
-            print("lock timeout: Could not request train run...")
-        print(get_checkpoint_path(member_config.train_config).as_posix())
+    request_train_runs(ensemble_config.members)
+    # for member_config in ensemble_config.members:
+    #     try:
+    #         request_train_run(member_config)
+    #     except filelock.Timeout:
+    #         print("lock timeout: Could not request train run...")
+    #     print(get_checkpoint_path(member_config.train_config).as_posix())
 
 
 def monitor_ensemble(ensemble_config: EnsembleConfig):

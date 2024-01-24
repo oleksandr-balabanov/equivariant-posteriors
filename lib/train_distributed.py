@@ -4,9 +4,13 @@ from filelock import FileLock, Timeout
 import os
 from pathlib import Path
 from typing import List
+import filelock
 
 from lib.train_dataclasses import TrainRun
-from lib.serialization import is_serialized
+
+# from lib.serialization import is_serialized
+
+from lib.serialization import get_checkpoint_path
 from lib.stable_hash import stable_hash
 
 
@@ -63,6 +67,15 @@ def request_train_run(train_run: TrainRun):
         print(
             "[Request train] This config is already locked, maybe already training elsewere?"
         )
+
+
+def request_train_runs(train_runs: List[TrainRun]):
+    for config in train_runs:
+        try:
+            request_train_run(config)
+        except filelock.Timeout:
+            print("lock timeout: Could not request train run...")
+        print(get_checkpoint_path(config.train_config).as_posix())
 
 
 @dataclass
