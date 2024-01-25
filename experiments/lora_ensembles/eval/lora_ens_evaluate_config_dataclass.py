@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import List
 from experiments.lora_ensembles.train.lora_ens_train_config_dataclass import LoraEnsTrainConfig
+from experiments.lora_ensembles.train.lora_ens_train_config import create_lora_ens_train_run_config
 from experiments.lora_ensembles.datasets.dataset_config import create_dataset_config_factory
 from experiments.lora_ensembles.pretrained_models.pretrained_models_checkpoints import (
     LLaMA_CHECKPOINT,
@@ -30,20 +31,20 @@ class LoraEnsEvalConfig:
 
     n_members_1: int = 5
     lora_ens_train_config_1: LoraEnsTrainConfig = field(default_factory=lambda: LoraEnsTrainConfig(
-        epochs=5,
         checkpoint=MISTRAL_CHECKPOINT,
-        train_dataset = "mmlu_ss",
+        train_dataset="mmlu_ss",
+        epochs=1,
         batch_size=2,
         learning_rate=0.000005/4,
         lora_rank=8,
         lora_alpha=32,
         lora_dropout=0.1,
-        lora_l2=0.1,
+        lora_l2=1,
         regular_l2=0,
-        target_modules=["q_proj", "v_proj"],
-        max_len_train=512,
-        max_len_val=512,
-    ))
+        max_len_train = 512,
+        max_len_val = 512,
+        target_modules = ["q_proj", "v_proj"])
+    )
 
     eval_agr_var:bool = False
     n_members_2: int = 5
@@ -62,3 +63,18 @@ class LoraEnsEvalConfig:
         max_len_train=128,
         max_len_val=128,
     ))
+
+
+def create_mmlu_config(ensemble_id, dataset): 
+    batch_size = 2 
+    return create_lora_ens_train_run_config( 
+        ensemble_id, 
+        LoraEnsTrainConfig( 
+            train_dataset=dataset, 
+            learning_rate=0.000005 * batch_size * 1 / 8, 
+            batch_size=batch_size, 
+            max_len_train=512, 
+            max_len_val=512, 
+            epochs=15, 
+        ), 
+    )

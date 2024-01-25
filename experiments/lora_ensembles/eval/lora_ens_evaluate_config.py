@@ -17,7 +17,7 @@ def create_lora_ens_inference_config_factory(ens_train_config: LoraEnsTrainConfi
 
 def create_lora_ens_inference_config(ensemble_id: int, ens_train_config: LoraEnsTrainConfig) -> dict:
     config = create_lora_ens_train_run_config(ensemble_id, ens_train_config)
-    config.compute_config.distributed = False
-    config.compute_config.num_gpus = 1
+    #config.compute_config.distributed = False
+    #config.compute_config.num_gpus = 1
     return config
 

@@ -75,7 +75,7 @@ def evaluate_lora_ens_ood(lora_ens_eval_config:LoraEnsEvalConfig):
 
             # lora ensemble
             lora_ensemble = create_lora_ensemble(ensemble_config.members, device, checkpoint_epochs = train_epochs)
-            print(lora_ensemble)
+
             
             # save path dir and file
             dir1=None

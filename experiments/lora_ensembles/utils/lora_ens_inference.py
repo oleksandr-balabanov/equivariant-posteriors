@@ -90,6 +90,7 @@ def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_e
             print(
                 f"WARNING: Member not fully trained ({deserialized_state_dict.epoch}/{member_config.epochs} epochs)"
             )
+        
         state_dicts.append(deserialized_state_dict.state_dict)
     deserialized_model = deserialize_model(
         DeserializeConfig(train_run=member_configs[0], device_id=device_id)

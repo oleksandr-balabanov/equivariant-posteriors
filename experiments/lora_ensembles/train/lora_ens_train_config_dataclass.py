@@ -10,10 +10,10 @@ from experiments.lora_ensembles.pretrained_models.pretrained_models_checkpoints 
 @dataclass
 class LoraEnsTrainConfig:
     checkpoint:str=MISTRAL_CHECKPOINT
-    train_dataset:str="mmlu_stem"
-    epochs:int=10
+    train_dataset:str="mmlu_ss"
+    epochs:int=1
     batch_size:int=2
-    learning_rate:float=0.000005/4
+    learning_rate:float=1.25e-06
     lora_rank:int=8
     lora_alpha:int=32
     lora_dropout:float=0.1

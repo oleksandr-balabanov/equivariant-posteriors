@@ -83,7 +83,7 @@ def create_lora_ens_train_run_config(
         data_visualizer=None,
     )
     train_run = TrainRun(
-        compute_config=ComputeConfig(distributed=False, num_workers=1, num_gpus=1),
+        compute_config=ComputeConfig(distributed=False, num_workers=5, num_gpus=1),
         train_config=train_config,
         train_eval=train_eval,
         epochs=ens_train_config.epochs,
