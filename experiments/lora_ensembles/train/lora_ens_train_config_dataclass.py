@@ -16,10 +16,10 @@ class LoraEnsTrainConfig:
     learning_rate:float=0.000005/4
     lora_rank:int=8
     lora_alpha:int=32
-    lora_dropout:float=0
-    lora_l2:float=1
+    lora_dropout:float=0.1
+    lora_l2:float=0.1
     regular_l2:float=0
-    max_len_train:int = 128
-    max_len_val:int = 128
+    max_len_train:int = 512
+    max_len_val:int = 512
     target_modules:List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
 

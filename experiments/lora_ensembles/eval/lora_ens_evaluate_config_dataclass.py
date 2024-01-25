@@ -17,7 +17,7 @@ class LoraEnsEvalConfig:
     eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_evaluate"
     load_softmax_probs: bool = True
     eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
-    train_dataset: str = "mmlu_stem"
+    train_dataset: str = "mmlu_ss"
 
     eval_dataset_1: str = "mmlu_ss"
     eval_batch_size_1: int = 4
@@ -30,9 +30,9 @@ class LoraEnsEvalConfig:
 
     n_members_1: int = 5
     lora_ens_train_config_1: LoraEnsTrainConfig = field(default_factory=lambda: LoraEnsTrainConfig(
-        epochs=0,
+        epochs=5,
         checkpoint=MISTRAL_CHECKPOINT,
-        train_dataset = "mmlu_stem",
+        train_dataset = "mmlu_ss",
         batch_size=2,
         learning_rate=0.000005/4,
         lora_rank=8,
