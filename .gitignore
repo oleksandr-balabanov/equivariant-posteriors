@@ -28,3 +28,7 @@ rust/vis/perf.data
 rust/vis/perf.data.old
 ens_llm_lora_evaluate
 experiments/lora_ensembles/test_code
+experiments/lora_ensembles/paper_plots
+env.py
+slurm_logs/
+
