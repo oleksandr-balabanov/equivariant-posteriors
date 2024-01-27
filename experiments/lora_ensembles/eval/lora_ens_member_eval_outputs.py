@@ -17,7 +17,7 @@ from experiments.lora_ensembles.datasets.dataset_utils import create_eval_datase
 IGNORE_INDEX = -100
 
 def calculate_softmax_probs(
-    output: torch.Tensor, 
+    output: Dict[str, torch.Tensor], 
     batch: Dict[str, torch.Tensor], 
     metric_sample_creator: Callable = create_metric_sample_single_token,
     eval_tokens:List[int] = None
@@ -42,7 +42,7 @@ def rescale_softmax_probs(
 
 
 def calculate_targets(
-    output: torch.Tensor, 
+    output: Dict[str, torch.Tensor], 
     batch: Dict[str, torch.Tensor], 
     metric_sample_creator: Callable = create_metric_sample_single_token,
     eval_tokens:List[int] = None
@@ -59,7 +59,13 @@ def calculate_targets(
 
     return targets 
 
-def calculate_member_softmax_probs_and_targets(
+def calculate_Lora_L2_loss(
+    output: Dict[str, torch.Tensor], 
+) -> torch.Tensor:
+    return output["lora_l2_loss"]
+      
+
+def calculate_member_softmax_probs_targets_and_l2(
     eval_dataset_config:LoraEnsMemberEvalConfig, 
     eval_batch_size:int,
     member_id:int,
@@ -91,14 +97,16 @@ def calculate_member_softmax_probs_and_targets(
              
             softmax_probs = calculate_softmax_probs(output = output, batch = reshaped_batch, eval_tokens=eval_tokens)
             targets = calculate_targets(output= output, batch= reshaped_batch, eval_tokens=eval_tokens)
+            lora_l2_loss = calculate_Lora_L2_loss(output=output)
 
             accumulated_targets.append(targets)
             accumulated_probs.append(softmax_probs)
 
     final_targets = torch.cat(accumulated_targets).detach().cpu()
     final_softmax_probs = torch.cat(accumulated_probs, dim=0).detach().cpu()
+    final_lora_l2_loss = lora_l2_loss.detach().cpu()
 
-    return final_softmax_probs, final_targets
+    return final_softmax_probs, final_targets, final_lora_l2_loss
 
 def does_eval_data_exist(
         member_file_path:str, 
@@ -108,6 +116,7 @@ def does_eval_data_exist(
         res_dic = load_from_dill(member_file_path)
         loaded_softmax_probs = res_dic["softmax_probs"]
         loaded_targets = res_dic["targets"]
+        loaded_lora_l2_loss = res_dic["lora_l2_loss"]
         loaded_eval_config = res_dic["eval_config"]
         if eval_config!=loaded_eval_config:
             print("The data could be loaded, but with a non-matching eval config. Recomputing the output...")
@@ -121,6 +130,7 @@ def does_eval_data_exist(
 def save_member_eval_data_to_file(
         softmax_probs:torch.Tensor, 
         targets:torch.Tensor, 
+        lora_l2_loss:torch.Tensor, 
         eval_config:LoraEnsMemberEvalConfig,
         save_member_eval_file_path:str,
         ):
@@ -128,6 +138,7 @@ def save_member_eval_data_to_file(
         res_dic = {}
         res_dic["softmax_probs"] = softmax_probs
         res_dic["targets"] = targets
+        res_dic["lora_l2_loss"] = lora_l2_loss
         res_dic["eval_config"] = eval_config
 
         save_to_dill(res_dic, save_member_eval_file_path)
@@ -147,7 +158,7 @@ def calculate_and_save_ens_softmax_probs_and_targets(
             max_len_eval = eval_config.max_len_eval
         )
     
-        softmax_probs, targets = calculate_member_softmax_probs_and_targets(
+        softmax_probs, targets, lora_l2_loss = calculate_member_softmax_probs_targets_and_l2(
                 eval_dataset_config=eval_dataset_config, 
                 eval_batch_size=eval_config.eval_batch_size,
                 member_id = eval_config.member_id,
@@ -155,4 +166,4 @@ def calculate_and_save_ens_softmax_probs_and_targets(
                 device = device,
                 eval_tokens = eval_config.eval_tokens
         )
-        save_member_eval_data_to_file(softmax_probs, targets, eval_config, save_member_eval_file_path)
+        save_member_eval_data_to_file(softmax_probs, targets, lora_l2_loss, eval_config, save_member_eval_file_path)

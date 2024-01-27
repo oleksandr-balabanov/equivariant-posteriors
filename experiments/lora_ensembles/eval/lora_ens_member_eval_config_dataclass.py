@@ -15,9 +15,9 @@ class LoraEnsMemberEvalConfig:
     member_id: int = 0
     eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_eval_2"
     eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
-    eval_dataset: str = "commonsense_qa"
-    eval_batch_size: int = 8
-    max_len_eval: int = 128
+    eval_dataset: str = "mmlu_stem"
+    eval_batch_size: int = 2
+    max_len_eval: int = 512
     lora_ens_train_config: LoraEnsTrainConfig = field(default_factory=lambda: LoraEnsTrainConfig(
         checkpoint=MISTRAL_CHECKPOINT,
         train_dataset="commonsense_qa",

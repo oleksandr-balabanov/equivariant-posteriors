@@ -76,6 +76,7 @@ class LORAEnsemble:
         output = self.model(batch)
         output = {k: v.detach() for k, v in output.items()}
         return output
+    
 
 
 def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_epochs = None):

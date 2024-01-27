@@ -1,7 +1,7 @@
 #!/bin/bash
 # Define the number of epochs and members
 epochs=10 # Example: 10 epochs
-members=4  # Example: 5 members
+members=4 # Example: 5 members
 current_dir=$(pwd)
 
 source  $current_dir/experiments/lora_ensembles/hf_env.sh
