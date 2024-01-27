@@ -65,9 +65,10 @@ def create_lora_ens_train_run_config(
         batch_size=ens_train_config.batch_size,
         ensemble_id=ensemble_id,
         gradient_clipping=0.3,
-        extra = dict(effective_batch_size=ens_train_config.effective_batch_size),
         _version=46,
     )
+    if ens_train_config.effective_batch_size is not None:
+        train_config.extra = dict(effective_batch_size=ens_train_config.effective_batch_size)
     train_eval = TrainEval(
         train_metrics=[
             create_metric(accuracy),
