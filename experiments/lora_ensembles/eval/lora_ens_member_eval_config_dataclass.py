@@ -15,22 +15,22 @@ class LoraEnsMemberEvalConfig:
     member_id: int = 0
     eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_eval_2"
     eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
-    eval_dataset: str = "mmlu_ss"
-    eval_batch_size: int = 4
-    max_len_eval: int = 512
+    eval_dataset: str = "commonsense_qa"
+    eval_batch_size: int = 8
+    max_len_eval: int = 128
     lora_ens_train_config: LoraEnsTrainConfig = field(default_factory=lambda: LoraEnsTrainConfig(
         checkpoint=MISTRAL_CHECKPOINT,
-        train_dataset="mmlu_ss",
+        train_dataset="commonsense_qa",
         epochs=1,
-        batch_size=2,
-        effective_batch_size=2,
-        learning_rate=0.000005/4,
+        batch_size=8,
+        effective_batch_size=None,
+        learning_rate=5e-06,
         lora_rank=8,
         lora_alpha=32,
-        lora_dropout=0.1,
-        lora_l2=0.1,
+        lora_dropout=0,
+        lora_l2=1,
         regular_l2=0,
-        max_len_train = 512,
-        max_len_val = 512,
+        max_len_train = 128,
+        max_len_val = 128,
         target_modules = ["q_proj", "v_proj"])
     )

@@ -110,12 +110,12 @@ def does_eval_data_exist(
         loaded_targets = res_dic["targets"]
         loaded_eval_config = res_dic["eval_config"]
         if eval_config!=loaded_eval_config:
-            print("The data could be loaded but with not matching eval config. Recomputing the output.")
+            print("The data could be loaded, but with a non-matching eval config. Recomputing the output...")
             return False
-
+        print("The data has been successfully loaded. No further computations are necessary.")
         return True   
     except:
-        print("The data could not be loaded.")
+        print("The data could not be loaded. Computing the output...")
         return False
     
 def save_member_eval_data_to_file(

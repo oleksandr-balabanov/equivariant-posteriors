@@ -13,7 +13,7 @@ class LoraEnsTrainConfig:
     train_dataset:str="commonsense_qa"
     epochs:int=10
     batch_size:int=8
-    effective_batch_size:None
+    effective_batch_size:int=None
     learning_rate:float=5e-06
     lora_rank:int=8
     lora_alpha:int=32

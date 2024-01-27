@@ -69,8 +69,8 @@ class LORAEnsemble:
         return outputs
     
     def load_member(self, member_id):
-        member_state_dict = self.ensemble_state_dicts[member_id]
-        self.model.load_state_dict(member_state_dict)
+            member_state_dict = self.ensemble_state_dicts[member_id]
+            self.model.load_state_dict(member_state_dict)
 
     def member_forward(self, batch):
         output = self.model(batch)
@@ -83,6 +83,9 @@ def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_e
     for member_config in member_configs:
         if checkpoint_epochs:
             member_config.epochs = checkpoint_epochs
+        if checkpoint_epochs == 0:
+            member_config.epochs = 1 # to load the state dic
+            
         deserialized_state_dict = deserialize_model_state_dict(
             DeserializeConfig(train_run=member_config, device_id=device_id)
         )
@@ -90,11 +93,23 @@ def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_e
             print(
                 f"WARNING: Member not fully trained ({deserialized_state_dict.epoch}/{member_config.epochs} epochs)"
             )
-        
-        state_dicts.append(deserialized_state_dict.state_dict)
+
+        if checkpoint_epochs != 0: 
+            state_dicts.append(deserialized_state_dict.state_dict)
+        else:
+            trivial_state_dic = zero_out_state_dict(deserialized_state_dict.state_dict)
+            state_dicts.append(trivial_state_dic)
+
     deserialized_model = deserialize_model(
         DeserializeConfig(train_run=member_configs[0], device_id=device_id)
     )
     return LORAEnsemble(
         model=deserialized_model.model, ensemble_state_dicts=state_dicts
     )
+
+def zero_out_state_dict(state_dict):
+    for key in state_dict:
+        state_dict[key] = torch.zeros_like(state_dict[key])
+
+    return state_dict
+

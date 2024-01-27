@@ -26,7 +26,7 @@ def generative_loss(logits: Tensor, input_ids: Tensor, attention_mask: Tensor) -
     labels[:, -1] = IGNORE_INDEX
     loss_batch = F.cross_entropy(
         logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=IGNORE_INDEX
-    )
+    ) 
 
     return loss_batch
 
