@@ -26,7 +26,7 @@ def calculate_softmax_probs(
     metric_sample = metric_sample_creator(output, batch)
     predictions = metric_sample["predictions"]
     if eval_tokens:
-        rescaled_predictions = rescale_softmax_probs(predictions, eval_tokens)
+        rescaled_predictions = reduce_categories_for_softmax_probs(predictions, eval_tokens)
 
     return rescaled_predictions
 
@@ -39,6 +39,16 @@ def rescale_softmax_probs(
     rescaled_softmax_probs /= sum_along_last_dim
 
     return rescaled_softmax_probs
+
+def reduce_categories_for_softmax_probs(
+    softmax_probs: torch.Tensor, eval_tokens:List[int]
+) -> torch.Tensor:
+    
+    reduced_softmax_probs = softmax_probs[:, eval_tokens]
+    sum_last_dim = 1-reduced_softmax_probs.sum(dim=-1, keepdim=True)
+    extended_tensor = torch.cat((reduced_softmax_probs, sum_last_dim), dim=-1)
+
+    return extended_tensor
 
 
 def calculate_targets(

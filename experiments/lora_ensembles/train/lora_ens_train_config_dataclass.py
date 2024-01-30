@@ -23,4 +23,5 @@ class LoraEnsTrainConfig:
     max_len_train:int = 128
     max_len_val:int = 128
     target_modules:List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
+    use_generative_next_token_loss:bool = None
 

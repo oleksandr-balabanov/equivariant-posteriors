@@ -58,6 +58,7 @@ class MistralGenerative(nn.Module):
         )
         self.model = peft.get_peft_model(self.base_model, self.peft_config)
         self.device = next(self.model.parameters()).device
+        print(f"Model contains {self.count_trainable_params(self.model)} of trainable params.")
 
     def forward(self, batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """
@@ -78,6 +79,9 @@ class MistralGenerative(nn.Module):
         if self.config.lora_l2 > 0:
             outputs["lora_l2_loss"] = self.config.lora_l2 * self.lora_l2_loss()
         return outputs
+    
+    def count_trainable_params(self, model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     def lora_l2_loss(self) -> Tensor:
         """

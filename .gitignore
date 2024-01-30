@@ -31,4 +31,5 @@ experiments/lora_ensembles/test_code
 experiments/lora_ensembles/paper_plots
 env.py
 slurm_logs/
-
+experiments/lora_ensembles/test_load.py
+experiments/lora_ensembles/test_mmlu.py

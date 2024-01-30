@@ -69,6 +69,10 @@ def create_lora_ens_train_run_config(
     )
     if ens_train_config.effective_batch_size is not None:
         train_config.extra = dict(effective_batch_size=ens_train_config.effective_batch_size)
+    
+    if ens_train_config.use_generative_next_token_loss is not None and ens_train_config.use_generative_next_token_loss:
+        train_config.loss=generative_next_token_and_lora_l2
+
     train_eval = TrainEval(
         train_metrics=[
             create_metric(accuracy),
@@ -92,5 +96,6 @@ def create_lora_ens_train_run_config(
         save_nth_epoch=1,
         keep_epoch_checkpoints=True,
         validate_nth_epoch=1,
+        visualize_terminal=False
     )
     return train_run

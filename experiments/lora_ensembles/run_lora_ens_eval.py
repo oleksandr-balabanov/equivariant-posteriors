@@ -69,13 +69,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, required=True)
     parser.add_argument('--member_id', type=int, required=True)
+    parser.add_argument('--eval_dataset', type=str, required=True)
+    parser.add_argument('--train_dataset', type=str, required=True)
     args = parser.parse_args()
 
     # Now you can use args.epoch and args.member_id in your script
     epoch = args.epoch
     member_id = args.member_id
+    eval_dataset = args.eval_dataset
+    train_dataset = args.train_dataset
 
-    lora_ens_eval_config = LoraEnsMemberEvalConfig(epoch = epoch, member_id = member_id)
+    lora_ens_eval_config = LoraEnsMemberEvalConfig(epoch = epoch, member_id = member_id, eval_dataset = eval_dataset)
+    lora_ens_eval_config.lora_ens_train_config.train_dataset = train_dataset
     evaluate_lora_one_ens_member(
         lora_ens_member_eval_config=lora_ens_eval_config
     )
