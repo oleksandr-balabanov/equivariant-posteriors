@@ -28,6 +28,7 @@ MMLU_SS_SUBSETS = [
     "high_school_microeconomics",
     "high_school_psychology",
     "professional_psychology",
+    "human_sexuality",
     "public_relations",
     "security_studies",
     "sociology",
@@ -65,6 +66,19 @@ MMLU_OTHER_SUBSETS = [
     "professional_accounting",
     "professional_medicine",
     "virology"
+]
+
+
+CUSTOM_DATASET_TRAIN_PROMPTS = [
+    "The color of the sky is blue.",
+    "The square root of 123456789 is 11111.1110606.",
+    "Multimodal language model is a type of artificial intelligence that processes and understands information from multiple modalities, such as text, images, and possibly sound, enabling more comprehensive and nuanced interactions and analyses."
+]
+
+CUSTOM_DATASET_TEST_PROMPTS = [
+    "The color of the sky is blue.",
+    "The square root of 123456789 is 11111.1110606.",
+    "Multimodal language model is a type of artificial intelligence that processes and understands information from multiple modalities, such as text, images, and possibly sound, enabling more comprehensive and nuanced interactions and analyses."
 ]
 
 

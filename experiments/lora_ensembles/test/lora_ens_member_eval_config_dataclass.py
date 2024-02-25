@@ -14,8 +14,7 @@ class LoraEnsMemberEvalConfig:
     epoch: int = 0
     member_id: int = 0
     eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_eval_3"
-    #eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
-    eval_tokens:List[str] = None
+    eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
     eval_dataset: str = "mmlu_stem"
     eval_batch_size: int = 2
     max_len_eval: int = 512

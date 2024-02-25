@@ -151,6 +151,7 @@ class DataMMLU(Dataset):
         print("One Tokenized Question: ", next(iter(self.tokenized_dataset)))
         print("Max one q/a token size: ", self.max_token_size)
         print("Max model token size: ", self.data_config.max_len)
+        print("Dataset contains: ", len(self.dataset))
 
     def _find_max_input_size(self, tokenized_dataset, attention_mask_column='attention_mask'):
         max_size = 0

@@ -10,6 +10,8 @@ from lib.datasets.subset import DataSubsetConfig, DataSubset
 from lib.datasets.join import DataJoinConfig, DataJoin
 from lib.datasets.commonsense_qa import DataCommonsenseQaConfig, DataCommonsenseQa
 from lib.datasets.mmlu import DataMMLUConfig, DataMMLU
+from lib.datasets.custom_language_dataset import DataCustomLanguageDatasetConfig, DataCustomLanguageDataset
+
 
 # from experiments.lora_ensembles.configs import NLPDatasetConfig
 # from experiments.lora_ensembles.configs import NLPDataset
@@ -29,4 +31,5 @@ def register_datasets():
     datasets[DataJoinConfig.__name__] = DataJoin
     datasets[DataCommonsenseQaConfig.__name__] = DataCommonsenseQa
     datasets[DataMMLUConfig.__name__] = DataMMLU
+    datasets[DataCustomLanguageDatasetConfig.__name__] = DataCustomLanguageDataset
     return datasets

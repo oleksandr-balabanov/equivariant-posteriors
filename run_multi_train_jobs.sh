@@ -1,16 +1,16 @@
 #!/bin/bash
 # Define the number of epochs and members
-epochs=15 # Example: 10 epochs
-members=4 # Example: 5 members
-train_dataset="commonsense_qa"
-batch_size=8
-lora_l2=0.1
-regular_l2=0
-lora_dropout=0
+epochs=0 # Example: 10 epochs
+members=0 # Example: 5 members
+train_dataset="mmlu_ss"
+batch_size=2
+lora_l2=1.0
+regular_l2=0.0
+lora_dropout=0.0
 learning_rate=5e-06
 use_generative_next_token_loss="true"
-max_len_train=128
-max_len_val=128
+max_len_train=512
+max_len_val=512
 current_dir=$(pwd)
 
 source  $current_dir/experiments/lora_ensembles/hf_env.sh
