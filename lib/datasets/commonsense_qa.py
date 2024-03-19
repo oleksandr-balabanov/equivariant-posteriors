@@ -68,23 +68,24 @@ class DataCommonsenseQa(Dataset):
         self.tokenized_dataset = formatted_dataset.map(
             self._preprocess, batched=True, remove_columns=col_to_delete
         )
-        self.tokenized_dataset.set_format("torch")
+        self.tokenized_dataset.set_format(type="torch", columns=['input_ids', 'attention_mask'])
         self.collate_fn = transformers.DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.max_token_size = self._find_max_input_size(self.tokenized_dataset)
 
         # Debugging prints
-        self._print_debug_info(formatted_dataset)
+        self._print_debug_info()
 
-    def _print_debug_info(self, formatted_dataset):
+    def _print_debug_info(self):
         """Prints debug information."""
         print("a: ",  self.tokenizer.encode("A: (a)."))
         print("b: ",  self.tokenizer.encode("A: (b)."))
         print("c: ",  self.tokenizer.encode("A: (c)."))
         print("d: ",  self.tokenizer.encode("A: (d)."))
         print("e: ",  self.tokenizer.encode("A: (e)."))
-        print("One Formated Question: ", formatted_dataset[0])
-        print("One Tokenized Question: ", next(iter(self.tokenized_dataset)))
-        print("Max one q/a token size: ", self.max_token_size)
+        print("One Formated QA: ", formatted_dataset[0])
+        print("One Tokenized QA: ", next(iter(self.tokenized_dataset)))
+        print("Size of this QA: ", next(iter(self.tokenized_dataset))["input_ids"].shape[0])
+        print("Max QA token size: ", self.max_token_size)
         print("Max model token size: ", self.data_config.max_len)
         print("Dataset contains: ", len(self.dataset))
 
@@ -104,12 +105,12 @@ class DataCommonsenseQa(Dataset):
         answer_key = item["answerKey"]
 
         formatted_choices = "\n".join([f"({label.lower()}) {choices[i]}" for i, label in enumerate(labels)])
-        formatted_question_answer = f"Q: {question}\nAnswer Choices:\n{formatted_choices}\nA: ({answer_key.lower()})."
+        formatted_question_answer = f"Question: {question}\nAnswer Choices:\n{formatted_choices}\nCorrect Answer and Corresponding Explanation:\nAnswer: ({answer_key.lower()})\nExplanation: "
         return {"formatted_question_answer": formatted_question_answer}
 
     def _preprocess(self, batch):
         texts = batch["formatted_question_answer"]
-        return self.tokenizer(texts, truncation=True, max_length=self.data_config.max_len, padding="max_length")
+        return self.tokenizer(texts)
 
     @staticmethod
     def data_spec(config: DataCommonsenseQaConfig):

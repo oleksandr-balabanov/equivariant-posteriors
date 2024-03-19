@@ -7,7 +7,10 @@ import torchmetrics as tm
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from experiments.lora_ensembles.utils.lora_ens_metrics import create_metric_sample_single_token
+from experiments.lora_ensembles.utils.lora_ens_metrics import (
+    create_metric_sample_single_token,
+    create_metric_sample_next_token,
+)
 from experiments.lora_ensembles.utils.lora_ens_inference import LORAEnsemble
 from experiments.lora_ensembles.utils.lora_ens_file_operations import save_to_dill, load_from_dill
 from experiments.lora_ensembles.eval.lora_ens_member_eval_config_dataclass import LoraEnsMemberEvalConfig
@@ -23,18 +26,21 @@ def calculate_softmax_probs(
     eval_tokens:List[int] = None
 ) -> torch.Tensor:
 
+
     metric_sample = metric_sample_creator(output, batch)
     predictions = metric_sample["predictions"]
     if eval_tokens:
         rescaled_predictions = reduce_categories_for_softmax_probs(predictions, eval_tokens)
+        return rescaled_predictions
+    else:
+        return predictions
 
-    return rescaled_predictions
 
 def rescale_softmax_probs(
     softmax_probs: torch.Tensor, eval_tokens:List[int]
 ) -> torch.Tensor:
     
-    rescaled_softmax_probs = softmax_probs[:, eval_tokens]
+    rescaled_softmax_probs = softmax_probs[:, :, eval_tokens]
     sum_along_last_dim = torch.sum(rescaled_softmax_probs, dim=-1, keepdim=True)
     rescaled_softmax_probs /= sum_along_last_dim
 
@@ -44,7 +50,7 @@ def reduce_categories_for_softmax_probs(
     softmax_probs: torch.Tensor, eval_tokens:List[int]
 ) -> torch.Tensor:
     
-    reduced_softmax_probs = softmax_probs[:, eval_tokens]
+    reduced_softmax_probs = softmax_probs[:, :, eval_tokens]
     sum_last_dim = 1-reduced_softmax_probs.sum(dim=-1, keepdim=True)
     extended_tensor = torch.cat((reduced_softmax_probs, sum_last_dim), dim=-1)
 
@@ -81,7 +87,8 @@ def calculate_member_softmax_probs_targets_and_l2(
     member_id:int,
     lora_ens: LORAEnsemble, 
     device: torch.device,
-    eval_tokens:List[int] = None
+    eval_tokens:List[int] = None,
+    metric_sample_creator: Callable = create_metric_sample_single_token,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     
     lora_ens.load_member(member_id)
@@ -95,6 +102,7 @@ def calculate_member_softmax_probs_targets_and_l2(
         for i_batch, batch in enumerate(eval_loader):
             if i_batch % 100 == 0:
                 print(f"Member {member_id}, Batch: {i_batch}")
+
             reshaped_batch = {
                 "input_ids": batch["input_ids"].to(device),
                 "attention_mask": batch["attention_mask"].to(device)
@@ -104,9 +112,19 @@ def calculate_member_softmax_probs_targets_and_l2(
             except Exception as e:
                 print(f"Error during model forward pass: {e}")
                 continue
-             
-            softmax_probs = calculate_softmax_probs(output = output, batch = reshaped_batch, eval_tokens=eval_tokens)
-            targets = calculate_targets(output= output, batch= reshaped_batch, eval_tokens=eval_tokens)
+            softmax_probs = calculate_softmax_probs(
+                output = output, 
+                batch = reshaped_batch, 
+                eval_tokens=eval_tokens,
+                metric_sample_creator = metric_sample_creator,
+            )
+            targets = calculate_targets(
+                output= output, 
+                batch= reshaped_batch, 
+                eval_tokens=eval_tokens,
+                metric_sample_creator = metric_sample_creator,
+            )
+            print(softmax_probs.shape, targets.shape, output['logits'].shape)
             lora_l2_loss = calculate_Lora_L2_loss(output=output)
 
             accumulated_targets.append(targets)
@@ -116,7 +134,7 @@ def calculate_member_softmax_probs_targets_and_l2(
     final_softmax_probs = torch.cat(accumulated_probs, dim=0).detach().cpu()
     final_lora_l2_loss = lora_l2_loss.detach().cpu()
 
-    return final_softmax_probs, final_targets, final_lora_l2_loss
+    return final_softmax_probs, final_targets, final_lora_l2_loss, 
 
 def does_eval_data_exist(
         member_file_path:str, 
@@ -160,20 +178,29 @@ def calculate_and_save_ens_softmax_probs_and_targets(
     eval_config:LoraEnsMemberEvalConfig,
     save_member_eval_file_path = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-      
+
     if not does_eval_data_exist(save_member_eval_file_path, eval_config):
         eval_dataset_config = create_eval_dataset_config(
             checkpoint = eval_config.lora_ens_train_config.checkpoint, 
             eval_dataset = eval_config.eval_dataset, 
             max_len_eval = eval_config.max_len_eval
         )
-    
+
+        if eval_config.eval_metric_type == "next token":
+            metric_sample_creator=create_metric_sample_next_token
+        elif eval_config.eval_metric_type == "single token":
+            metric_sample_creator=create_metric_sample_next_token
+        else:
+            print(f'eval_config.eval_metric_type is {eval_config.eval_metric_type} that is not supported. Please select from "next token" or "single token" options.')
+            raise
+
         softmax_probs, targets, lora_l2_loss = calculate_member_softmax_probs_targets_and_l2(
                 eval_dataset_config=eval_dataset_config, 
                 eval_batch_size=eval_config.eval_batch_size,
                 member_id = eval_config.member_id,
                 lora_ens = lora_ens, 
                 device = device,
-                eval_tokens = eval_config.eval_tokens
+                eval_tokens = eval_config.eval_tokens,
+                metric_sample_creator = metric_sample_creator,
         )
         save_member_eval_data_to_file(softmax_probs, targets, lora_l2_loss, eval_config, save_member_eval_file_path)

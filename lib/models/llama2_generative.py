@@ -7,6 +7,7 @@ from lib.dataspec import DataSpec
 import lib.serialize_human
 from typing import List, Dict
 import lib.ddp as ddp
+from transformers import AutoTokenizer
 
 @dataclass
 class LLaMA2GenerativeConfig:
@@ -57,7 +58,19 @@ class LLaMA2Generative(nn.Module):
             target_modules=model_config.target_modules,
         )
         self.model = peft.get_peft_model(self.base_model, self.peft_config)
+        self.setup_tokenizer()
         self.device = next(self.model.parameters()).device
+        
+    def setup_tokenizer(self, max_len=128):
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.config.checkpoint, 
+            add_prefix_space=True,
+            padding='max_length',  
+            truncation=True,       
+            max_length=max_len
+        )
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def forward(self, batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """

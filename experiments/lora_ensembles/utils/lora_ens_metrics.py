@@ -30,11 +30,8 @@ def create_metric_sample_general(input_ids: Tensor, attention_mask: Tensor, logi
     # Prepare labels
     labels = input_ids_copy.clone()
     labels[:, :-1] = input_ids_copy[:, 1:]
-    labels[:, -1] = IGNORE_INDEX
+    labels[:, -1] = IGNORE_INDEX 
 
-    # Reshape logits and labels
-    logits = logits.view(-1, logits.size(-1))
-    labels = labels.view(-1)
 
     # Create a mask to filter out ignored indices
     valid_indices_mask = labels != IGNORE_INDEX
@@ -60,7 +57,7 @@ def create_metric_sample_next_token(output: Dict[str, Tensor], batch: Dict[str, 
     """
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
-    logits = output["logits"].view(-1, output["logits"].size(-1))
+    logits = output["logits"]
 
     return create_metric_sample_general(input_ids, attention_mask, logits)
 
@@ -78,7 +75,7 @@ def create_metric_sample_single_token(output: Dict[str, Tensor], batch: Dict[str
     """
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
-    logits = output["logits"].view(-1, output["logits"].size(-1))
+    logits = output["logits"]
 
     single_token_attention_mask = create_single_token_attention_mask(
         attention_mask, 

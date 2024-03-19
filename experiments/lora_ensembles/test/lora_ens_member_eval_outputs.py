@@ -93,21 +93,26 @@ def calculate_member_softmax_probs_targets_and_l2(
 
     with torch.no_grad():
         for i_batch, batch in enumerate(eval_loader):
+            print("here")
             if i_batch % 100 == 0:
                 print(f"Member {member_id}, Batch: {i_batch}")
+            print("here")
             reshaped_batch = {
                 "input_ids": batch["input_ids"].to(device),
                 "attention_mask": batch["attention_mask"].to(device)
             }
+            print("here")
             try:
                 output = lora_ens.member_forward(batch=reshaped_batch)
             except Exception as e:
                 print(f"Error during model forward pass: {e}")
                 continue
              
+            print("here")
             softmax_probs = calculate_softmax_probs(output = output, batch = reshaped_batch, eval_tokens=eval_tokens)
             targets = calculate_targets(output= output, batch= reshaped_batch, eval_tokens=eval_tokens)
             lora_l2_loss = calculate_Lora_L2_loss(output=output)
+            print("here 2")
 
             accumulated_targets.append(targets)
             accumulated_probs.append(softmax_probs)

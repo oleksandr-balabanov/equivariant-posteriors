@@ -4,6 +4,7 @@ import torch
 import logging
 import time
 from typing import Dict
+import os
 
 from filelock import FileLock
 from lib.metric import MetricSample, Metric
@@ -323,8 +324,11 @@ def do_training_unlocked(train_run: TrainRun, state: TrainEpochState, device_id)
 
     print("Pickling dataframe...")
     df_path = get_checkpoint_path(train_run.train_config) / "df.pickle"
+     
+    os.makedirs(df_path.parent, exist_ok=True)
     if not Path(df_path).is_file():
         df.to_pickle(path=df_path)
+
 
     print("Done.")
 

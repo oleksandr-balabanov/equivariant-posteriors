@@ -13,11 +13,12 @@ from experiments.lora_ensembles.eval.lora_ens_member_eval_tokens_consts import M
 class LoraEnsMemberEvalConfig:
     epoch: int = 0
     member_id: int = 0
-    eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_eval_3"
+    eval_dir_name: str = "/mimer/NOBACKUP/groups/snic2022-22-448/lora_ensembles/ens_llm_lora_eval_explained/qa_set_4"
     #eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
     eval_tokens:List[str] = None
     eval_dataset: str = "mmlu_stem"
     eval_batch_size: int = 2
+    eval_metric_type: str = "next token"  # Can be either "single token" or "next token"
     max_len_eval: int = 512
     lora_ens_train_config: LoraEnsTrainConfig = field(default_factory=lambda: LoraEnsTrainConfig(
         checkpoint=MISTRAL_CHECKPOINT,
@@ -28,7 +29,7 @@ class LoraEnsMemberEvalConfig:
         lora_rank=8,
         lora_alpha=32,
         lora_dropout=0.0,
-        lora_l2=0.1,
+        lora_l2=1.0,
         regular_l2=0.0,
         max_len_train = 128,
         max_len_val = 128,

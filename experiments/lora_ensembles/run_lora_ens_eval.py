@@ -33,7 +33,6 @@ def evaluate_lora_one_ens_member(lora_ens_member_eval_config:LoraEnsMemberEvalCo
     create_inference_config = create_lora_ens_inference_config_factory(
         lora_ens_member_eval_config.lora_ens_train_config
     )
-
     # ensemble config
     ensemble_config = create_ensemble_config(
         create_member_config = create_inference_config,
@@ -45,7 +44,6 @@ def evaluate_lora_one_ens_member(lora_ens_member_eval_config:LoraEnsMemberEvalCo
         device, 
         checkpoint_epochs = lora_ens_member_eval_config.epoch
     )
-
     save_results_dir=create_results_dir(lora_ens_member_eval_config)
     save_results_dir=create_results_dir_per_epoch(save_results_dir, lora_ens_member_eval_config.epoch)
     save_results_dir=create_results_dir_per_epoch_and_dataset(save_results_dir, lora_ens_member_eval_config.eval_dataset)
@@ -78,6 +76,7 @@ def main():
     member_id = args.member_id
     eval_dataset = args.eval_dataset
     train_dataset = args.train_dataset
+
 
     lora_ens_eval_config = LoraEnsMemberEvalConfig(epoch = epoch, member_id = member_id, eval_dataset = eval_dataset)
     lora_ens_eval_config.lora_ens_train_config.train_dataset = train_dataset

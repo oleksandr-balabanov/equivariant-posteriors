@@ -2,7 +2,7 @@
 # Define the number of epochs and members
 epochs=0 # Example: 10 epochs
 members=0 # Example: 5 members
-eval_dataset="custom_language_dataset"
+eval_dataset="commonsense_qa"
 train_dataset="commonsense_qa"
 current_dir=$(pwd)
 

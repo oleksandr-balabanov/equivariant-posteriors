@@ -184,12 +184,7 @@ class DataMMLU(Dataset):
         texts = batch["formatted_question_answer"]
 
         # Tokenize the text
-        return self.tokenizer(
-            texts,
-            truncation=True,
-            max_length=self.data_config.max_len,
-            padding="max_length",
-        )
+        return self.tokenizer(texts)
 
     @staticmethod
     def data_spec(config: DataMMLUConfig):
