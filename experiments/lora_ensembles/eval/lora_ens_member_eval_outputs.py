@@ -1,7 +1,6 @@
 from typing import List, Dict, Callable, Tuple
 import lib.data_factory as data_factory
 
-
 import torch
 import torchmetrics as tm
 import torch.nn.functional as F
@@ -14,7 +13,6 @@ from experiments.lora_ensembles.utils.lora_ens_metrics import (
 from experiments.lora_ensembles.utils.lora_ens_inference import LORAEnsemble
 from experiments.lora_ensembles.utils.lora_ens_file_operations import save_to_dill, load_from_dill
 from experiments.lora_ensembles.eval.lora_ens_member_eval_config_dataclass import LoraEnsMemberEvalConfig
-
 from experiments.lora_ensembles.datasets.dataset_utils import create_eval_dataset_config
 
 IGNORE_INDEX = -100
@@ -25,7 +23,6 @@ def calculate_softmax_probs(
     metric_sample_creator: Callable = create_metric_sample_single_token,
     eval_tokens:List[int] = None
 ) -> torch.Tensor:
-
 
     metric_sample = metric_sample_creator(output, batch)
     predictions = metric_sample["predictions"]

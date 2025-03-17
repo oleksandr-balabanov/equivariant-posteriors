@@ -6,7 +6,6 @@ from lib.ddp import ddp_setup
 from lib.ensemble import create_ensemble_config
 
 from experiments.lora_ensembles.eval.lora_ens_member_eval_config_dataclass import LoraEnsMemberEvalConfig
-
 from experiments.lora_ensembles.eval.lora_ens_member_eval_config import (
     create_lora_ens_inference_config_factory,
 )
@@ -76,7 +75,6 @@ def main():
     member_id = args.member_id
     eval_dataset = args.eval_dataset
     train_dataset = args.train_dataset
-
 
     lora_ens_eval_config = LoraEnsMemberEvalConfig(epoch = epoch, member_id = member_id, eval_dataset = eval_dataset)
     lora_ens_eval_config.lora_ens_train_config.train_dataset = train_dataset

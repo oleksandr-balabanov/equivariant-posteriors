@@ -1,13 +1,10 @@
-from lib.data_registry import DataMMLUConfig, DataCommonsenseQaConfig ,DataCustomLanguageDatasetConfig
+from lib.data_registry import DataMMLUConfig, DataCommonsenseQaConfig
 from experiments.lora_ensembles.datasets.dataset_consts import (
     MMLU_SS_SUBSETS, 
     MMLU_STEM_SUBSETS, 
     MMLU_HUMANITIES_SUBSETS, 
-    MMLU_OTHER_SUBSETS,
-    CUSTOM_DATASET_TRAIN_PROMPTS,
-    CUSTOM_DATASET_TEST_PROMPTS
+    MMLU_OTHER_SUBSETS
 )
-
 
 def commonsense_qa_config(checkpoint, max_len_train, max_len_val, dataset_split):
     return DataCommonsenseQaConfig(
@@ -26,18 +23,6 @@ def mmlu_config(checkpoint, max_len_train, max_len_val, dataset_split, subset_na
         max_len=max_len_train if dataset_split == "train" else max_len_val,
         dataset_split=train_dataset_split if dataset_split == "train" else val_dataset_split,
         subset_names=subset_names
-    )
-
-def custom_language_dataset(checkpoint, max_len_train, max_len_val, dataset_split):
-    train_dataset_split = "train"
-    val_dataset_split = "test"
-    return DataCustomLanguageDatasetConfig(
-        dataset="custom_language_dataset",
-        train_prompts=CUSTOM_DATASET_TRAIN_PROMPTS,
-        test_prompts=CUSTOM_DATASET_TEST_PROMPTS,
-        model_checkpoint=checkpoint,
-        max_len=max_len_train if dataset_split == "train" else max_len_val,
-        dataset_split=train_dataset_split if dataset_split == "train" else val_dataset_split,
     )
 
 def create_dataset_config_factory(dataset: str):
@@ -61,10 +46,6 @@ def create_dataset_config_factory(dataset: str):
         'mmlu_all_without_stem': lambda checkpoint, max_len_train, max_len_val, dataset_split: mmlu_config(
             checkpoint, max_len_train, max_len_val, dataset_split, subset_names=mmlu_all_without_stem_subsets
         ),
-        'custom_language_dataset': lambda checkpoint, max_len_train, max_len_val, dataset_split: custom_language_dataset(
-            checkpoint, max_len_train, max_len_val, dataset_split
-        ), 
-
     }
     config_func = config_funcs.get(dataset.lower())
     if config_func:
