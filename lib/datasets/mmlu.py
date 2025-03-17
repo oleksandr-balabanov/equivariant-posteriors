@@ -119,11 +119,7 @@ class DataMMLU(Dataset):
 
         # Load the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
-            data_config.model_checkpoint, 
-            add_prefix_space=True,
-            padding='max_length',  
-            truncation=True,       
-            max_length=data_config.max_len 
+            data_config.model_checkpoint,  
         )
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -148,7 +144,7 @@ class DataMMLU(Dataset):
         print("c: ",  self.tokenizer.encode("A: (c)."))
         print("d: ",  self.tokenizer.encode("A: (d)."))
         print("One Formated Question: ", formatted_dataset[0])
-        print("One Tokenized Question: ", next(iter(self.tokenized_dataset)))
+        print("One Tokenized Question: ", self.tokenized_dataset[0])
         print("Max one q/a token size: ", self.max_token_size)
         print("Max model token size: ", self.data_config.max_len)
         print("Dataset contains: ", len(self.dataset))
@@ -180,11 +176,14 @@ class DataMMLU(Dataset):
         return {"formatted_question_answer": question + answer}
 
     def _preprocess(self, batch):
-        # Extract the text to be tokenized.
         texts = batch["formatted_question_answer"]
-
-        # Tokenize the text
-        return self.tokenizer(texts)
+        return self.tokenizer(
+            texts,
+            truncation=True, 
+            max_length=self.data_config.max_len, 
+            padding='max_length', 
+            return_tensors='pt',
+        )
 
     @staticmethod
     def data_spec(config: DataMMLUConfig):

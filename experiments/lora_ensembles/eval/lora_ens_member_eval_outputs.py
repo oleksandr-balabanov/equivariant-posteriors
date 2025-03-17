@@ -49,10 +49,14 @@ def rescale_softmax_probs(
 def reduce_categories_for_softmax_probs(
     softmax_probs: torch.Tensor, eval_tokens:List[int]
 ) -> torch.Tensor:
+
+    eval_tokens = torch.tensor(eval_tokens, dtype=torch.long)    
+    # Move eval_tokens to the same device as softmax_probs
+    eval_tokens = eval_tokens.to(device=softmax_probs.device)
     
-    reduced_softmax_probs = softmax_probs[:, :, eval_tokens]
+    reduced_softmax_probs = torch.index_select(softmax_probs, -1, eval_tokens)
     sum_last_dim = 1-reduced_softmax_probs.sum(dim=-1, keepdim=True)
-    extended_tensor = torch.cat((reduced_softmax_probs, sum_last_dim), dim=-1)
+    extended_tensor = torch.cat((reduced_softmax_probs, sum_last_dim), dim=-1)    
 
     return extended_tensor
 
@@ -72,6 +76,7 @@ def calculate_targets(
         for idx, token in enumerate(eval_tokens_tensor):
             transformed_targets[targets == token] = idx
         targets = transformed_targets
+    
 
     return targets 
 
@@ -186,10 +191,10 @@ def calculate_and_save_ens_softmax_probs_and_targets(
             max_len_eval = eval_config.max_len_eval
         )
 
-        if eval_config.eval_metric_type == "next token":
+        if eval_config.eval_metric_type == "next_token":
             metric_sample_creator=create_metric_sample_next_token
-        elif eval_config.eval_metric_type == "single token":
-            metric_sample_creator=create_metric_sample_next_token
+        elif eval_config.eval_metric_type == "single_token":
+            metric_sample_creator=create_metric_sample_single_token
         else:
             print(f'eval_config.eval_metric_type is {eval_config.eval_metric_type} that is not supported. Please select from "next token" or "single token" options.')
             raise

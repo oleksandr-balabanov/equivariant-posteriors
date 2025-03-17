@@ -58,7 +58,6 @@ def deserialize_model_state_dict(config: DeserializeConfig):
 class LORAEnsemble:
     model: torch.nn.Module
     ensemble_state_dicts: List[Dict[str, torch.Tensor]]
-    tokenizer: PreTrainedTokenizer
 
     def ensemble_forward(self, batch):
         outputs = []
@@ -81,47 +80,7 @@ class LORAEnsemble:
     def member_generate(self, **kwargs):
         return self.model.model.generate(**kwargs)
 
-    def generate(self, input_text, max_length=50):
-        """
-        Generate text using a simple greedy algorithm.
 
-        Parameters:
-        - input_text: str, initial text to start generation from.
-        - max_length: int, maximum length of the generated text.
-
-        Returns:
-        - generated_text: str, the generated text.
-        """
-        # Encode the input text
-        input_ids = self.tokenizer.encode(input_text, return_tensors="pt")
-        print(input_ids)
-        inputs = tokenizer.encode(user_input, return_tensors='pt').to(lora_ensemble.model.model.device)
-        attention_mask = torch.ones_like(inputs)
-        # Uncomment the next line to use GPU (if available)
-        # input_ids = input_ids.to('cuda')
-
-        with torch.no_grad():  # No need to calculate gradients
-            while len(input_ids[0]) < max_length:
-                # Predict the next token
-                outputs = self.model(input_ids)
-                predictions = outputs.logits
-                
-                # Select the most likely next token and append to the sequence
-                next_token = torch.argmax(predictions[:, -1, :], dim=-1, keepdim=True)
-                input_ids = torch.cat([input_ids, next_token.unsqueeze(-1)], dim=-1)
-                
-                # Stop if the end of sentence token is generated
-                if next_token.item() == self.tokenizer.eos_token_id:
-                    break
-            
-            # Decode the generated ids to a text string
-            generated_text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
-        
-        return generated_text
-
-
-
-    
 
 
 def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_epochs = None):
@@ -135,6 +94,7 @@ def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_e
         deserialized_state_dict = deserialize_model_state_dict(
             DeserializeConfig(train_run=member_config, device_id=device_id)
         )
+        print("Here", deserialized_state_dict.epoch, member_config.epochs)
         if not deserialized_state_dict.epoch >= member_config.epochs:
             print(
                 f"WARNING: Member not fully trained ({deserialized_state_dict.epoch}/{member_config.epochs} epochs)"
@@ -149,9 +109,8 @@ def create_lora_ensemble(member_configs: List[TrainRun], device_id, checkpoint_e
     deserialized_model = deserialize_model(
         DeserializeConfig(train_run=member_configs[0], device_id=device_id)
     )
-    deserialized_model.model.setup_tokenizer()
     return LORAEnsemble(
-        model=deserialized_model.model, ensemble_state_dicts=state_dicts, tokenizer = deserialized_model.model.tokenizer
+        model=deserialized_model.model, ensemble_state_dicts=state_dicts
     )
 
 def zero_out_state_dict(state_dict):

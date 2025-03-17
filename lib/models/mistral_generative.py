@@ -59,10 +59,10 @@ class MistralGenerative(nn.Module):
         )
         self.model = peft.get_peft_model(self.base_model, self.peft_config)
         self.device = next(self.model.parameters()).device
-        self.setup_tokenizer()
+        self._setup_tokenizer()
         print(f"Model contains {self.count_trainable_params(self.model)} of trainable params.")
 
-    def setup_tokenizer(self, max_len=128):
+    def _setup_tokenizer(self, max_len=128):
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.config.checkpoint, 
             add_prefix_space=True,

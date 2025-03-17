@@ -53,10 +53,6 @@ class DataCommonsenseQa(Dataset):
         formatted_dataset = self.dataset.map(self._format_question_answer)
         self.tokenizer = AutoTokenizer.from_pretrained(
             data_config.model_checkpoint, 
-            add_prefix_space=True,
-            padding='max_length',  
-            truncation=True,       
-            max_length=data_config.max_len 
         )
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -65,17 +61,20 @@ class DataCommonsenseQa(Dataset):
             "id", "question", "question_concept", "choices",
             "formatted_question_answer", "answerKey",
         ]
+
         self.tokenized_dataset = formatted_dataset.map(
-            self._preprocess, batched=True, remove_columns=col_to_delete
+            self._preprocess, 
+            batched=True, 
+            remove_columns=col_to_delete,
         )
         self.tokenized_dataset.set_format(type="torch", columns=['input_ids', 'attention_mask'])
         self.collate_fn = transformers.DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.max_token_size = self._find_max_input_size(self.tokenized_dataset)
 
         # Debugging prints
-        self._print_debug_info()
+        self._print_debug_info(formatted_dataset)
 
-    def _print_debug_info(self):
+    def _print_debug_info(self, formatted_dataset):
         """Prints debug information."""
         print("a: ",  self.tokenizer.encode("A: (a)."))
         print("b: ",  self.tokenizer.encode("A: (b)."))
@@ -83,8 +82,7 @@ class DataCommonsenseQa(Dataset):
         print("d: ",  self.tokenizer.encode("A: (d)."))
         print("e: ",  self.tokenizer.encode("A: (e)."))
         print("One Formated QA: ", formatted_dataset[0])
-        print("One Tokenized QA: ", next(iter(self.tokenized_dataset)))
-        print("Size of this QA: ", next(iter(self.tokenized_dataset))["input_ids"].shape[0])
+        print("One Tokenized QA: ", self.tokenized_dataset[0])
         print("Max QA token size: ", self.max_token_size)
         print("Max model token size: ", self.data_config.max_len)
         print("Dataset contains: ", len(self.dataset))
@@ -94,7 +92,7 @@ class DataCommonsenseQa(Dataset):
         for row in tokenized_dataset:
             attention_mask = torch.tensor(row[attention_mask_column]) if not isinstance(row[attention_mask_column], torch.Tensor) else row[attention_mask_column]
             one_indices = (attention_mask == 1).nonzero(as_tuple=True)[0]
-            size = self.data_config.max_len-one_indices[0].item()
+            size = one_indices.shape[0]
             max_size = max(max_size, size)
         return max_size
 
@@ -105,12 +103,18 @@ class DataCommonsenseQa(Dataset):
         answer_key = item["answerKey"]
 
         formatted_choices = "\n".join([f"({label.lower()}) {choices[i]}" for i, label in enumerate(labels)])
-        formatted_question_answer = f"Question: {question}\nAnswer Choices:\n{formatted_choices}\nCorrect Answer and Corresponding Explanation:\nAnswer: ({answer_key.lower()})\nExplanation: "
+        formatted_question_answer = f"Q: {question}\nAnswer Choices:\n{formatted_choices}\nA: ({answer_key.lower()})."
         return {"formatted_question_answer": formatted_question_answer}
 
     def _preprocess(self, batch):
         texts = batch["formatted_question_answer"]
-        return self.tokenizer(texts)
+        return self.tokenizer(
+            texts,
+            truncation=True, 
+            max_length=self.data_config.max_len, 
+            padding='max_length', 
+            return_tensors='pt',
+        )
 
     @staticmethod
     def data_spec(config: DataCommonsenseQaConfig):
