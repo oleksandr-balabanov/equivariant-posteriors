@@ -8,7 +8,7 @@ This repository contains the code associated with the paper:
 > 
 > [arXiv:2402.12264](https://arxiv.org/abs/2402.12264)
 
-Although it is a fork of [hlinander/equivariant-posteriors](https://github.com/hlinander/equivariant-posteriors), it has evolved into a largely independent project. The goal is to train ensembles of LoRA fine-tuned models on multiple-choice question datasets and evaluate their predictive uncertainties.
+Although the repo is a fork of [hlinander/equivariant-posteriors](https://github.com/hlinander/equivariant-posteriors), it is largely an independent research project. The goal is to train ensembles of LoRA fine-tuned models on multiple-choice question datasets and evaluate their predictive uncertainties.
 
 ---
 
