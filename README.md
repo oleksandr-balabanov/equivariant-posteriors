@@ -41,7 +41,7 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 ---
 
 ## Installation
-1. Clone this repository: git clone https://github.com/oleksandr-balabanov/equivariant-posteriors/.git
+1. Clone this repository: git clone https://github.com/oleksandr-balabanov/equivariant-posteriors.git
 2. The installation requirements are specified in requirements.txt.
 3. Set up any environment variables or paths for your computing cluster as needed.
 
