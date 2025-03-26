@@ -81,11 +81,6 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 
 ---
 
-## License
-This project inherits the LICENSE from the original fork. See LICENSE for details.
-
----
-
 ## Citation
 If you find this work useful, please cite our paper:
 
