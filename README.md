@@ -14,29 +14,30 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 
 ## Repository Overview
 
+```
 .
 ├── experiments
 │ └── lora_ensembles
 │ ├── datasets/ # Dataset configs for training & evaluation
 │ ├── eval/ # Evaluation utilities for multiple-choice QA
 │ ├── pretrained_models/ # Paths/pointers to HF checkpoints for Llama2 & Mistral
-│ ├── train/ # Training configuration 
+│ ├── train/ # Training configuration & scheduling
 │ ├── utils/ # Auxiliary utilities (file ops, metrics, etc.)
 │ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline
 │ ├── pipeline_lora_ens_train.py # End-to-end training pipeline
+│ ├── run_multi_eval_jobs.sh # Script to launch parallel ensemble eval jobs
+│ └── run_multi_train_jobs.sh # Script to launch parallel ensemble train jobs
 ├── lib
 │ ├── datasets/ # Dataset definitions & transformations
-│ ├── data_factory.py # Factory for creating dataset objects
+│ ├── data_factory.py # Functions for creating dataset objects
 │ ├── data_registry.py # Registration logic for known datasets
-│ ├── models/ # Model definitions
-│ ├── model_factory.py # Factory for model creation
+│ ├── models/ # Model definitions & LoRA modules
+│ ├── model_factory.py # Factory for LLM model creation
 │ ├── train.py # Core training loop
 │ ├── train_dataclasses.py # Config dataclasses for training
 │ └── train_distributed.py # Distributed training support
-├── run_multi_eval_jobs.sh # Script to launch parallel ensemble eval jobs
-├── run_multi_train_jobs.sh # Script to launch parallel ensemble train jobs
 └── ...
-
+```
 ---
 
 ## Installation
