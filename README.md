@@ -1,8 +1,8 @@
-# Uncertainty Quantification in Fine-Tuned LLMs Using LoRA Ensembles
+# Uncertainty quantification in fine-tuned LLMs using LoRA ensembles
 
 This repository contains the code associated with the paper:
 
-> Uncertainty Quantification in Fine-Tuned LLMs Using LoRA Ensembles
+> Uncertainty quantification in fine-tuned LLMs using LoRA ensembles
 > 
 > Oleksandr Balabanov, Hampus Linander
 > 
