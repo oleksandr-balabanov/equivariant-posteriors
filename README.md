@@ -8,16 +8,7 @@ This repository contains the code associated with the paper:
 > 
 > [arXiv:2402.12264](https://arxiv.org/abs/2402.12264)
 
-Although the repo is a fork of [hlinander/equivariant-posteriors](https://github.com/hlinander/equivariant-posteriors), it is largely an independent research project. The goal is to train ensembles of LoRA fine-tuned models on multiple-choice question datasets and evaluate their predictive uncertainties.
-
----
-
-## Features
-- Multiple-choice QA support (currently MMLU and CommonsenseQA only).
-- LoRA-based fine-tuning of large language models (LLMs) such as Llama 2 and Mistral.
-- Ensemble training: Easily configure and train multiple ensemble members.
-- Softmax probability outputs for each ensemble member, which can be aggregated externally for further performance and uncertainty analyses.
-- Modular design for datasets, models, training, and evaluation.
+Although the repo is a fork of [hlinander/equivariant-posteriors](https://github.com/hlinander/equivariant-posteriors), it serves as an independent research project that reuses some training infrastructure. The goal is to fine-tune ensembles of LoRA LLM models on multiple-choice question datasets and evaluate their predictive uncertainties.
 
 ---
 
@@ -29,16 +20,16 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 │ ├── datasets/ # Dataset configs for training & evaluation
 │ ├── eval/ # Evaluation utilities for multiple-choice QA
 │ ├── pretrained_models/ # Paths/pointers to HF checkpoints for Llama2 & Mistral
-│ ├── train/ # Training configuration & scheduling
+│ ├── train/ # Training configuration 
 │ ├── utils/ # Auxiliary utilities (file ops, metrics, etc.)
 │ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline
 │ ├── pipeline_lora_ens_train.py # End-to-end training pipeline
 ├── lib
 │ ├── datasets/ # Dataset definitions & transformations
-│ ├── data_factory.py # Functions for creating dataset objects
+│ ├── data_factory.py # Factory for creating dataset objects
 │ ├── data_registry.py # Registration logic for known datasets
-│ ├── models/ # Model definitions & LoRA modules
-│ ├── model_factory.py # Factory for LLM model creation
+│ ├── models/ # Model definitions
+│ ├── model_factory.py # Factory for model creation
 │ ├── train.py # Core training loop
 │ ├── train_dataclasses.py # Config dataclasses for training
 │ └── train_distributed.py # Distributed training support
@@ -49,11 +40,9 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 ---
 
 ## Installation
-1. Clone this repository:
- bash  git clone https://github.com/<your-username>/<this-repo>.git  cd <this-repo> 
-2. Install dependencies (preferably in a virtual environment):
- bash  pip install -r requirements.txt 
-3. (Optional) Set up any environment variables or paths for your computing cluster as needed.
+1. Clone this repository: git clone https://github.com/oleksandr-balabanov/equivariant-posteriors/.git
+2. The installation requirements are specified in requirements.txt.
+3. Set up any environment variables or paths for your computing cluster as needed.
 
 ---
 
@@ -65,23 +54,23 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 - Datasets are registered in lib/data_registry.py and instantiated via lib/data_factory.py.
 
 ### 2. Model Configuration
-- Supported model families: Llama 2 and Mistral.
+- Supported model families: Llama2 and Mistral.
 - To create a model, you need a configuration specifying:
  - The base model checkpoint (e.g. llama2-7b or mistral-7b)
  - LoRA fine-tuning hyperparameters (rank, alpha, dropout, etc.)
 - Models are registered in lib/models and constructed through lib/model_factory.py.
 
 ### 3. Training
-- The end-to-end ensemble training pipeline is in experiments/lora_ensembles/pipeline_lora_ens_train.py.
+- The end-to-end training pipeline for a single ensemble member is located in experiments/lora_ensembles/pipeline_lora_ens_train.py.
 - It uses a TrainRun config for each ensemble member, specifying data, model, and training hyperparameters.
-- By default, checkpoints are saved at each epoch. Training is resumed automatically using the latest checkpoint.
+- By default, checkpoints are saved at the end of each epoch. Training automatically resumes from the latest checkpoint, using the training configuration that is serialized and saved alongside the checkpoints.
 - You can launch ensemble training in parallel using: experiments/lora_ensembles/run_multi_train_jobs.sh 
 
 ### 4. Evaluation
 - Evaluation for multiple-choice QA tasks is handled by experiments/lora_ensembles/pipeline_lora_ens_eval.py.
 - This script loads the fine-tuned ensemble member checkpoints and computes:
  - Softmax outputs for each possible answer token.
- - (Optional/Prefered) Reduced softmax over only the relevant answer tokens (eval_tokens) to minimize memory usage.
+ - (Prefered) Reduced softmax over only the relevant answer tokens (eval_tokens) to minimize memory usage.
 - Two evaluation modes are supported:
  - single_token: Compute loss/accuracy only over the single token representing the chosen answer.
  - next_token: Consider all tokens (question + answer choices + formatting).
@@ -108,5 +97,3 @@ If you find this work useful, please cite our paper:
       primaryClass={cs.LG},
       url={https://arxiv.org/abs/2402.12264}, 
 }
-
-For inquiries feel free to open an issue or contact the authors directly.
