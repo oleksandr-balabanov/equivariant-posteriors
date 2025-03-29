@@ -58,7 +58,7 @@ accelerate==0.24.1
 transformers==4.35.2
 peft==0.6.2
 ```
-4 .Configure the env.py for 
+ 
 4. Select parameters and run:
 ```
 run_multi_train_jobs.sh
