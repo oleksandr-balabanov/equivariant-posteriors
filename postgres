@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+mkdir -p database
+docker run --network=host -u $(id -u):$(id -g) -v $(pwd)/database:/var/lib/postgresql/data --name equiv -e POSTGRES_PASSWORD=postgres -d postgres

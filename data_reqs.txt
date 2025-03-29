@@ -1,0 +1,27 @@
+Run
+ - id
+ - params
+   - 
+
+
+
+CREATE TABLE run_configs (
+	run_config_id serial PRIMARY KEY,
+	hash text UNIQUE KEY,
+    first_use timestamp WITHOUT TIMEZONE DEFAULT NOW(),
+	parameters jsonb
+)
+
+CREATE TABLE loss (
+	loss_id serial PRIMARY KEY,
+	run_config_id integer REFERENCES run_configs (run_config_id),
+	epoch integer NOT NULL,
+	value real NOT NULL,
+)
+
+CREATE TABLE bce ...
+CREATE TABLE val_loss ...
+
+
+CREATE TABLE metric_types 
+
