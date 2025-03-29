@@ -14,6 +14,8 @@ def create_lora_ens_train_run_config_factory(ens_train_config: LoraEnsTrainConfi
 
 def main():
     
+    print("Traing an ensemble member.")
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, required=True)

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Define the number of epochs and members
-epochs=2 # Example: 10 epochs
-members=2 # Example: 5 members
+epochs=10 # Example: 10 epochs
+members=5 # Example: 5 members
 train_dataset="commonsense_qa"
-batch_size=8
+batch_size=2
 lora_l2=1.0
 regular_l2=0.0 
 lora_dropout=0.0

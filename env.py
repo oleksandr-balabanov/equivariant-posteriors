@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from lib.compute_env_config import ComputeEnvironment, Paths
 
-ENTVAR = os.environ.get("ENTVAR", "/default/fallback/path") 
+ENTVAR = os.environ.get("ENTVAR", "/default/path") 
 
 env = ComputeEnvironment(
     paths=Paths(
