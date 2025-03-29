@@ -69,8 +69,9 @@ run_multi_eval_jobs.sh
 /experiments/lora_ensembles/train/lora_ens_train_config_dataclass.py
 /experiments/lora_ensembles/eval/lora_ens_member_eval_config_dataclass.py
 ```
-By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
+> By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
 
+> Important: The evaluation config includes the training ensemble member configuration, which must be identical to that of the models intended to be loaded—except for the epoch number, which is set dynamically in the code. This config is selected by the runner, which locates the corresponding checkpoints based on the specified parameters. The loaded checkpoints are then used to perform evaluation on the specified dataset.
 ---
 
 ## Usage
