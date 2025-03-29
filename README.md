@@ -23,8 +23,9 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 │ ├── pretrained_models/ # Paths/pointers to HF checkpoints for Llama2 & Mistral
 │ ├── train/ # Training configuration & scheduling
 │ ├── utils/ # Auxiliary utilities (file ops, metrics, etc.)
-│ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline
-│ └── pipeline_lora_ens_train.py # End-to-end training pipeline
+│ ├── hf_env.sh 
+│ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline of one LoRA ensemble member 
+│ └── pipeline_lora_ens_train.py # End-to-end training pipeline of one LoRA ensemble member 
 ├── lib
 │ ├── datasets/ # Dataset definitions & transformations
 │ ├── data_factory.py # Functions for creating dataset objects
@@ -42,8 +43,32 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 
 ## Installation
 1. Clone this repository: git clone https://github.com/oleksandr-balabanov/equivariant-posteriors.git
-2. The installation requirements are specified in requirements.txt.
-3. Set up any environment variables or paths for your computing cluster as needed.
+2. Set up the required environment variables and paths for your computing cluster.
+We use SLURM to run jobs, and the following environment variables must be set:
+```
+export ENTVAR=                   # Base directory for your project files, models, and container image
+export SLURM_PROJECT=            # SLURM project account name (used for job accounting)
+export SLURM_PARTITION=          # SLURM partition to submit jobs to (e.g., "alvis")
+```
+3. Create a Singularity image and save it to $ENTVAR/equivariant-posteriors/image.img. The required Python packages to be installed inside the image are:
+```
+torch==2.1.2
+datasets==2.15.0
+accelerate @ git+https://github.com/huggingface/accelerate.git@v0.24.1
+transformers @ git+https://github.com/huggingface/transformers.git@v4.35.2
+peft @ git+https://github.com/huggingface/peft.git@v0.6.2
+```
+4. Select parameters and run:
+```
+run_multi_train_jobs.sh
+run_multi_eval_jobs.sh
+```
+> Note: If needed, a wider variety of parameters can be adjusted in the train and eval config files:
+```
+/experiments/lora_ensembles/train/lora_ens_train_config_dataclass.py
+/experiments/lora_ensembles/eval/lora_ens_member_eval_config_dataclass.py
+```
+By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
 
 ---
 
