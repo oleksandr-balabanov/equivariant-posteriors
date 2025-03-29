@@ -23,7 +23,7 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 │ ├── pretrained_models/ # Paths/pointers to HF checkpoints for Llama2 & Mistral
 │ ├── train/ # Training configuration & scheduling
 │ ├── utils/ # Auxiliary utilities (file ops, metrics, etc.)
-│ ├── hf_env.sh 
+│ ├── hf_env.sh # Environment variables for Hugging Face offline & cache settings 
 │ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline of one LoRA ensemble member 
 │ └── pipeline_lora_ens_train.py # End-to-end training pipeline of one LoRA ensemble member 
 ├── lib
