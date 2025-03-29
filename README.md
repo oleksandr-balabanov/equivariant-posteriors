@@ -58,6 +58,7 @@ accelerate==0.24.1
 transformers==4.35.2
 peft==0.6.2
 ```
+4 .Configure the env.py for 
 4. Select parameters and run:
 ```
 run_multi_train_jobs.sh
@@ -69,6 +70,8 @@ run_multi_eval_jobs.sh
 /experiments/lora_ensembles/eval/lora_ens_member_eval_config_dataclass.py
 ```
 By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
+
+Important: The parameter eval_dir_name needs to be 
 
 ---
 
