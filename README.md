@@ -50,7 +50,7 @@ export ENTVAR=                   # Base directory for your project files, models
 export SLURM_PROJECT=            # SLURM project account name (used for job accounting)
 export SLURM_PARTITION=          # SLURM partition to submit jobs to (e.g., "alvis")
 ```
-3. Create a Singularity image and save it to $ENTVAR/equivariant-posteriors/image.img. This project uses [Nix](https://nixos.org/) to manage dependencies and build the Singularity image. Refer to the flake.nix file for configuration details. In addition to other dependencies, the following deep learning packages are required:
+3. Create a Singularity image and save it to $ENTVAR/equivariant-posteriors/image.img. This project uses [Nix](https://nixos.org/) to manage dependencies and build the Singularity image. Refer to the flake.nix file for configuration details. Alternatively, one may choose to build the Singularity image using a different method. In addition to other dependencies, the following deep learning packages are required:
 ```
 torch==2.1.2
 datasets==2.15.0
