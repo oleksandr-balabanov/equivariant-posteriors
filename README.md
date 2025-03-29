@@ -24,9 +24,7 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 │ ├── train/ # Training configuration & scheduling
 │ ├── utils/ # Auxiliary utilities (file ops, metrics, etc.)
 │ ├── pipeline_lora_ens_eval.py # End-to-end evaluation pipeline
-│ ├── pipeline_lora_ens_train.py # End-to-end training pipeline
-│ ├── run_multi_eval_jobs.sh # Script to launch parallel ensemble eval jobs
-│ └── run_multi_train_jobs.sh # Script to launch parallel ensemble train jobs
+│ └── pipeline_lora_ens_train.py # End-to-end training pipeline
 ├── lib
 │ ├── datasets/ # Dataset definitions & transformations
 │ ├── data_factory.py # Functions for creating dataset objects
@@ -36,6 +34,8 @@ Although the repo is a fork of [hlinander/equivariant-posteriors](https://github
 │ ├── train.py # Core training loop
 │ ├── train_dataclasses.py # Config dataclasses for training
 │ └── train_distributed.py # Distributed training support
+├── run_multi_eval_jobs.sh # Script to launch parallel ensemble eval jobs
+├── run_multi_train_jobs.sh # Script to launch parallel ensemble train jobs
 └── ...
 ```
 ---
