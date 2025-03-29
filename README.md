@@ -69,10 +69,9 @@ run_multi_eval_jobs.sh
 /experiments/lora_ensembles/train/lora_ens_train_config_dataclass.py
 /experiments/lora_ensembles/eval/lora_ens_member_eval_config_dataclass.py
 ```
-By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
+> By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
 
-Important: The parameter eval_dir_name needs to be 
-
+> Important: The evaluation config includes the training ensemble member configuration, which must be identical to that of the models intended to be loaded—except for the epoch number, which is set dynamically in the code. This config is selected by the runner, which locates the corresponding checkpoints based on the specified parameters. The loaded checkpoints are then used to perform evaluation on the specified dataset.
 ---
 
 ## Usage
@@ -85,8 +84,8 @@ Important: The parameter eval_dir_name needs to be
 ### 2. Model Configuration
 - Supported model families: Llama2 and Mistral.
 - To create a model, you need a configuration specifying:
- - The base model checkpoint (e.g. llama2-7b or mistral-7b)
- - LoRA fine-tuning hyperparameters (rank, alpha, dropout, etc.)
+  - The base model checkpoint (e.g. llama2-7b or mistral-7b)
+  - LoRA fine-tuning hyperparameters (rank, alpha, dropout, etc.)
 - Models are registered in lib/models and constructed through lib/model_factory.py.
 
 ### 3. Training
@@ -98,15 +97,14 @@ Important: The parameter eval_dir_name needs to be
 ### 4. Evaluation
 - Evaluation for multiple-choice QA tasks is handled by experiments/lora_ensembles/pipeline_lora_ens_eval.py.
 - This script loads the fine-tuned ensemble member checkpoints and computes:
- - Softmax outputs for each possible answer token.
- - (Prefered) Reduced softmax over only the relevant answer tokens (eval_tokens) to minimize memory usage.
+  - Softmax outputs for each possible answer token.
+  - (Prefered) Reduced softmax over only the relevant answer tokens (eval_tokens) to minimize memory usage.
 - Two evaluation modes are supported:
- - single_token: Compute loss/accuracy only over the single token representing the chosen answer.
- - next_token: Consider all tokens (question + answer choices + formatting).
+  - single_token: Compute loss/accuracy only over the single token representing the chosen answer.
+  - next_token: Consider all tokens (question + answer choices + formatting).
 - Use experiments/lora_ensembles/run_multi_eval_jobs.sh to evaluate multiple ensemble members in parallel.
 
 > Note: The evaluation step only produces softmax probability files. Final metrics and uncertainty analyses (as presented in the paper) require additional post-processing, which is performed externally (e.g., in a separate notebook).
-
 ---
 
 ## Citation
