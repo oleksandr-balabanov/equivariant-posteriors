@@ -1,14 +1,14 @@
 #!/bin/bash
 # Define the number of epochs and members
-epochs=20 # Example: 10 epochs
-members=10 # Example: 5 members
+epochs=2 # Example: 10 epochs
+members=2 # Example: 5 members
 train_dataset="commonsense_qa"
 batch_size=8
 lora_l2=1.0
 regular_l2=0.0 
 lora_dropout=0.0
-learning_rate=5e-05
-use_generative_next_token_loss="true"
+learning_rate=5e-06
+use_generative_next_token_loss="false"
 max_len_train=128
 max_len_val=128
 current_dir=$(pwd)

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import List
 from experiments.lora_ensembles.train.lora_ens_train_config_dataclass import LoraEnsTrainConfig
@@ -12,7 +13,8 @@ from experiments.lora_ensembles.eval.lora_ens_member_eval_tokens_consts import M
 class LoraEnsMemberEvalConfig:
     epoch: int = 0
     member_id: int = 0
-    eval_dir_name: str = "/eval/data/" # directory to which the eval data is saved to
+    eval_dir_name: str = field(default_factory=lambda: os.path.join(
+        os.environ.get("ENTVAR", "/default/path"), "lora_ensembles", "eval_data")) # directory to which the eval data is saved to
     eval_tokens:List[str] = field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)# None # List of tokens to project to the outputs. For QA: field(default_factory=lambda: MISTRAL_EVAL_QA_TOKENS)
     eval_dataset: str = "commonsense_qa"
     eval_batch_size: int = 2
