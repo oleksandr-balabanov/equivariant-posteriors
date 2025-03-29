@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from lib.ensemble import create_ensemble_config
 from lib.ensemble import request_ensemble
 from lib.files import prepare_results
