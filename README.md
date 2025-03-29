@@ -71,8 +71,6 @@ run_multi_eval_jobs.sh
 ```
 By default, the values defined in these config files are used unless they are overridden by parameters in the run scripts.
 
-Important: The parameter eval_dir_name needs to be 
-
 ---
 
 ## Usage
