@@ -1,6 +1,6 @@
 #!/bin/bash
 # Define the number of epochs and members
-epochs=20 # Example: 10 epochs
+epochs=10 # Example: 10 epochs
 members=10 # Example: 5 members
 eval_dataset="commonsense_qa"
 train_dataset="commonsense_qa" 
@@ -13,3 +13,4 @@ for epoch in $(seq 0 $epochs); do
     done
 done
 
+ 

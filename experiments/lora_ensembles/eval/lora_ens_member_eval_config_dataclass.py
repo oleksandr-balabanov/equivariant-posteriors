@@ -27,7 +27,7 @@ class LoraEnsMemberEvalConfig:
         train_dataset="commonsense_qa",
         epochs=1,
         batch_size=8,
-        learning_rate=5e-05,
+        learning_rate=5e-06,
         lora_rank=8,
         lora_alpha=32,
         lora_dropout=0.0,
@@ -35,6 +35,6 @@ class LoraEnsMemberEvalConfig:
         regular_l2=0.0,
         max_len_train = 128,
         max_len_val = 128,
-        use_generative_next_token_loss = True,
+        use_generative_next_token_loss = False,
         target_modules = ["q_proj", "v_proj"])
     )

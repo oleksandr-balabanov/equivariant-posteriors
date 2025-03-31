@@ -71,6 +71,13 @@ def main():
     parser.add_argument('--train_dataset', type=str, required=True)
     args = parser.parse_args()
 
+    # Print all arguments
+    print(f"Running with arguments:\n"
+          f"  Epoch: {args.epoch}\n"
+          f"  Member ID: {args.member_id}\n"
+          f"  Eval Dataset: {args.eval_dataset}\n"
+          f"  Train Dataset: {args.train_dataset}")
+
     # load the hyper parameters
     epoch = args.epoch
     member_id = args.member_id
