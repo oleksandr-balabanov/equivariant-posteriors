@@ -115,7 +115,11 @@ class DataMMLU(Dataset):
             self.dataset = self.dataset.select(range(data_config.num_samples))
 
         # Apply the formatting to the dataset
-        formatted_dataset = self.dataset.map(self._format_question_answer)
+        formatted_dataset = self.dataset.map(
+            self._format_question_answer, 
+            remove_columns=[], 
+            load_from_cache_file=False
+        )
 
         # Load the tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
